@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -9,9 +10,11 @@ module PlutusCore.Assembler.Tokenize
   ) where
 
 
+import qualified Data.ByteString as BS
 import Data.Either.Combinators (mapLeft)
 import Data.Text (cons, pack)
-import Data.Attoparsec.Text (Parser, parseOnly, endOfInput, many', choice, char, string, inClass, notInClass, satisfy, signed, decimal)
+import Data.Attoparsec.Text (Parser, parseOnly, endOfInput, many', many1, choice, char, string, inClass, notInClass, satisfy, signed, decimal)
+import Data.Word (Word8)
 
 import PlutusCore.Assembler.Prelude
 import PlutusCore.Assembler.Types.Builtin (Builtin (..))
@@ -121,17 +124,52 @@ integerLiteral = Integer <$> signed decimal
 
 
 byteStringLiteral :: Parser Token
-byteStringLiteral =
-      hexadecimalByteStringLiteral
-  <|> base64ByteStringLiteral
+byteStringLiteral = hexadecimalByteStringLiteral
 
 
 hexadecimalByteStringLiteral :: Parser Token
-hexadecimalByteStringLiteral = todo
+hexadecimalByteStringLiteral = do
+  void $ string "0x"
+  ByteString . BS.pack <$> many1 hexByteLiteral
 
 
-base64ByteStringLiteral :: Parser Token
-base64ByteStringLiteral = todo
+hexByteLiteral :: Parser Word8
+hexByteLiteral = do
+  a <- hexDigit
+  b <- hexDigit
+  return (a * 16 + b)
+
+
+hexDigit :: Parser Word8
+hexDigit = hexCharToWord8 <$> satisfy (inClass (['0'..'9'] <> ['a'..'f'] <> ['A'..'F']))
+
+
+hexCharToWord8 :: Char -> Word8
+hexCharToWord8 =
+  \case
+    '0' -> 0
+    '1' -> 1
+    '2' -> 2
+    '3' -> 3
+    '4' -> 4
+    '5' -> 5
+    '6' -> 6
+    '7' -> 7
+    '8' -> 8
+    '9' -> 9
+    'a' -> 10
+    'A' -> 10
+    'b' -> 11
+    'B' -> 11
+    'c' -> 12
+    'C' -> 12
+    'd' -> 13
+    'D' -> 13
+    'e' -> 14
+    'E' -> 14
+    'f' -> 15
+    'F' -> 15
+    _   -> 0
 
 
 textLiteral :: Parser Token
