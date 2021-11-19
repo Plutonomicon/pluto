@@ -29,7 +29,7 @@ Data ::= 'data' DataConstant
 
 DataConstant ::= DataConstr | DataMap | DataList | Integer | ByteString
 
-DataConstr ::= 'sigma' NonNegativeInteger Term
+DataConstr ::= 'sigma' NonNegativeInteger DataConstant
 
 DataMap ::= '{' (DataMapEntry (',' DataMapEntry)*)? '}'
 
@@ -56,6 +56,7 @@ LetClause ::= Var '=' Term
 IfThenElse ::= 'if' Term 'then' Term 'else' Term
 
 InfixApply ::= Term InfixBuiltin Term
+             | Term '`' (Builtin | Var) '`' Term
 
 InfixBuiltin ::= '+i' | '-i' | '*i' | '/i' | '%i' | '==i' | '<i' | '<=i'
                | '+b' | ':b' | '!b' | '==b' | '<b' | '<=b'
