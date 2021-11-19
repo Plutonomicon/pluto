@@ -10,7 +10,9 @@ maintainer:    ryanmatovu@gmail.com
 library
     exposed-modules:
       PlutusCore.Assembler.Prelude
+      PlutusCore.Assembler.Types.AST
       PlutusCore.Assembler.Types.Builtin
+      PlutusCore.Assembler.Types.Constant
       PlutusCore.Assembler.Types.InfixBuiltin
       PlutusCore.Assembler.Types.Token
     build-depends:
@@ -27,6 +29,7 @@ library
       mtl,
       playground-common,
       plutus-pab,
+      plutus-core,
       plutus-contract,
       plutus-tx-plugin,
       plutus-tx,
