@@ -10,6 +10,7 @@ data InfixBuiltin =
   | MultiplyInteger
   | DivideInteger
   | RemainderInteger
+  | ModInteger
   | EqualsInteger
   | LessThanInteger
   | LessThanEqualsInteger
