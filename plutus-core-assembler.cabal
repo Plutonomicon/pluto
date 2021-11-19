@@ -10,6 +10,7 @@ maintainer:    ryanmatovu@gmail.com
 library
     exposed-modules:
       PlutusCore.Assembler.Prelude
+      PlutusCore.Assembler.Tokenize
       PlutusCore.Assembler.Types.AST
       PlutusCore.Assembler.Types.Builtin
       PlutusCore.Assembler.Types.Constant
@@ -18,6 +19,7 @@ library
     build-depends:
       base >= 4.9 && < 5,
       aeson,
+      attoparsec,
       bytestring,
       containers,
       either,

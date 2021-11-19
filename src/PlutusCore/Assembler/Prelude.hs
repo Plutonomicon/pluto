@@ -10,4 +10,4 @@ module PlutusCore.Assembler.Prelude
 
 import Data.ByteString (ByteString)
 import Data.Text (Text)
-import Prelude (Integer, Bool (True, False))
+import Prelude (Integer, Bool (True, False), Either (Left, Right))
