@@ -10,6 +10,8 @@ maintainer:    ryanmatovu@gmail.com
 library
     exposed-modules:
       PlutusCore.Assembler.Prelude
+      PlutusCore.Assembler.Types.Builtin
+      PlutusCore.Assembler.Types.InfixBuiltin
       PlutusCore.Assembler.Types.Token
     build-depends:
       base >= 4.9 && < 5,

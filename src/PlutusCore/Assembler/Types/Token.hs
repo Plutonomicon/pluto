@@ -5,10 +5,8 @@ module PlutusCore.Assembler.Types.Token ( Token (..) ) where
 
 
 import PlutusCore.Assembler.Prelude
-
-
-data Builtin
-data InfixBuiltin
+import PlutusCore.Assembler.Types.Builtin (Builtin)
+import PlutusCore.Assembler.Types.InfixBuiltin (InfixBuiltin)
 
 
 data Token = Var Text | Lambda | Arrow | Force | Delay | OpenParen | CloseParen | Error
