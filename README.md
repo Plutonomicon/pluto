@@ -21,6 +21,18 @@ Delay := '#' Term
 
 Constant := Integer | ByteString | Text | '()' | 'True' | 'False' | List | Tuple | Data
 
+Integer := TODO
+
+ByteString := TODO
+
+Text := TODO
+
+List := '[' (Constant (',' Constant)*)? ']'
+
+Tuple := '(' Constant ',' Constant ')'
+
+Data := TODO
+
 Builtin := 'AddInteger' | 'SubtractInteger' | 'MultiplyInteger' | 'DivideInteger'
          | 'QuotientInteger' | 'RemainderInteger' | 'ModInteger' | 'EqualsInteger'
          | 'LessThanInteger' | 'LessThanEqualsInteger' | 'AppendByteString'
