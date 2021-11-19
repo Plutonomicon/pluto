@@ -19,7 +19,7 @@ Force ::= '!' Term
 
 Delay ::= '#' Term
 
-Constant ::= Integer | ByteString | Text | '()' | 'True' | 'False' | List | Tuple | Data
+Constant ::= Integer | ByteString | Text | '()' | 'true' | 'false' | List | Tuple | Data
 
 List ::= '[' (Constant (',' Constant)*)? ']'
 
