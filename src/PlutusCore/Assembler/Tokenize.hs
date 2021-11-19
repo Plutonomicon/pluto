@@ -173,7 +173,36 @@ hexCharToWord8 =
 
 
 textLiteral :: Parser Token
-textLiteral = todo
+textLiteral = do
+  void $ char '"'
+  chars <- many' character
+  void $ char '"'
+  return (Text (pack chars))
+
+  where
+    character :: Parser Char
+    character = satisfy (notInClass specialChar) <|> escapeCode
+
+    specialChar :: String
+    specialChar = "\"\\\r\n\t"
+
+    escapeCode :: Parser Char
+    escapeCode = do
+      void $ char '\\'
+      literalEscapeCode <|> letterEscapeCode
+
+    literalEscapeCode :: Parser Char
+    literalEscapeCode = satisfy (inClass "\"\\")
+
+    letterEscapeCode :: Parser Char
+    letterEscapeCode = do
+      c <- satisfy (inClass "rnt")
+      return $
+        case c of
+          'r' -> '\r'
+          'n' -> '\n'
+          't' -> '\t'
+          _   -> '\0'
 
 
 boolLiteral :: Parser Token
@@ -311,7 +340,3 @@ thenKeyword = Then <$ string "then"
 
 elseKeyword :: Parser Token
 elseKeyword = Else <$ string "else"
-
-
-todo :: a
-todo = todo
