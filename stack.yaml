@@ -1,0 +1,195 @@
+resolver: lts-18.16
+packages:
+- ./.
+
+extra-deps:
+- OddWord-1.0.2.0
+- Unique-0.4.7.9
+- async-timer-0.2.0.0
+- beam-core-0.9.1.0
+- beam-migrate-0.5.1.0
+- beam-sqlite-0.5.1.0
+- canonical-json-0.6.0.0
+- command-0.1.1
+- composition-prelude-3.0.0.2
+- dom-lt-0.2.2.1
+- gray-code-0.3.1
+- hspec-2.8.3
+- hspec-core-2.8.3
+- lazy-search-0.1.2.1
+- libsystemd-journal-1.4.5
+- monoidal-containers-0.6.0.1
+- moo-1.2
+- network-3.1.2.5
+- nothunks-0.1.3
+- partial-order-0.2.0.0
+- recursion-schemes-5.1.3
+- row-types-1.0.1.2
+- servant-options-0.1.0.0
+- servant-subscriber-0.7.0.0
+- servant-websockets-2.0.0
+- size-based-0.1.2.0
+- statistics-linreg-0.3
+- streaming-binary-0.2.2.0
+- time-interval-0.1.1
+- time-out-0.2
+- transformers-except-0.1.2
+- dependent-map-0.4.0.0@sha256:ca2b131046f4340a1c35d138c5a003fe4a5be96b14efc26291ed35fd08c62221,1657
+- dependent-sum-0.7.1.0@sha256:0e419237f5b86da3659772afff9cab355c0f8d5b3fdb15a5b30e673d8dc83941,2147
+- dependent-sum-template-0.1.0.3@sha256:0bbbacdfbd3abf2a15aaf0cf2c27e5bdd159b519441fec39e1e6f2f54424adde,1682
+- ekg-0.4.0.15@sha256:d6e48859a89fbbe23496f871581e44a41f97dac627c2b9db81f49b92fa066516,2031
+- ekg-core-0.1.1.7@sha256:c4356aefea0e1e2f80a236d3b3f81b83b445c1e53519302e96477da0adee2e9f,2039
+- freer-simple-1.2.1.1@sha256:2419be815725c8e3f55947603da00ee4978396ed2480ea3dacf8227d36aa8781,4950
+- generic-lens-2.2.0.0@sha256:4008a39f464e377130346e46062e2ac1211f9d2e256bbb1857216e889c7196be,3867
+- generic-lens-core-2.2.0.0@sha256:b6b69e992f15fa80001de737f41f2123059011a1163d6c8941ce2e3ab44f8c03,2913
+- newtype-0.2.2.0@sha256:44435da250d96ab3a5a861425739f6af523495d1a3943f783df4b053b8a4c108,1354
+- pqueue-1.4.1.3@sha256:aa4371bf0ecabaed532997b6368fc88e95c21e9d5e62f76d6fd03b1d681fa3dc,1859
+- protolude-0.3.0@sha256:8361b811b420585b122a7ba715aa5923834db6e8c36309bf267df2dbf66b95ef,2693
+- snap-core-1.0.4.2@sha256:cf0ee4e6fb1ffe85e74054d129ad13f16b251db1c93fb0b99ff14f4d5930bb18,9780
+- snap-server-1.1.2.0@sha256:3167b836a0b0ee49c8d6c973535c33f583c9ef9ba62d9723f08509b38368cb8f,14641
+- sqlite-simple-0.4.18.0@sha256:3ceea56375c0a3590c814e411a4eb86943f8d31b93b110ca159c90689b6b39e5,3002
+- blaze-textual-0.2.2.1@sha256:42ab6bfe5b4ad4e703d2f55fcf6e67c6e561e7defc563723ca5978d4c78468bf,2573
+- ekg-json-0.1.0.6@sha256:e16efc1b09ae7635db3f0535335ee3e8aa666fe4bf3749783f4022020f6ca3b8,1050
+- io-streams-haproxy-1.0.1.0@sha256:fd6c585c46679752509df185c9d8f948d1ee03625005742ab5de3ebaa882690a,3084
+- th-extras-0.0.0.4@sha256:2f408c0f427530f36beb19c733a7a57f67b727713f9bb942b64f3b2e0e2932bf,1457
+
+
+- git: https://github.com/Quid2/flat.git
+  commit: ee59880f47ab835dbd73bea0847dab7869fc20d8
+- git: https://github.com/input-output-hk/purescript-bridge.git
+  commit: 6a92d7853ea514be8b70bab5e72077bf5a510596
+- git: https://github.com/input-output-hk/servant-purescript.git
+  commit: a0c7c7e37c95564061247461aef4be505a853538
+  # nix-sha256: sha256-zjrHrodkcbQmHPkyVivXfXAKCFT6N6smCo4bJwlQ9pw=
+- git: https://github.com/input-output-hk/cardano-crypto.git
+  commit: 07397f0e50da97eaa0575d93bee7ac4b2b2576ec
+  # nix-sha256: sha256-oxIOVlgm07FAEmgGRF1C2me9TXqVxQulEOcJ22zpTRs=
+- git: https://github.com/input-output-hk/cardano-base
+  commit: 4ea7e2d927c9a7f78ddc69738409a5827ab66b98
+  subdirs:
+    - base-deriving-via
+    - binary
+    - binary/test
+    - cardano-crypto-class
+    - cardano-crypto-praos
+    - cardano-crypto-tests
+    - measures
+    - orphans-deriving-via
+    - slotting
+    - strict-containers
+- git: https://github.com/input-output-hk/cardano-prelude
+  commit: fd773f7a58412131512b9f694ab95653ac430852
+  subdirs:
+    - cardano-prelude
+    - cardano-prelude-test
+- git: https://github.com/input-output-hk/cardano-addresses
+  commit: d2f86caa085402a953920c6714a0de6a50b655ec
+  subdirs:
+    - core
+    - command-line
+- git: https://github.com/j-mueller/cardano-wallet
+  commit: 6be73ab852c0592713dfe78218856d4a8a0ee69e
+  subdirs:
+    - lib/text-class
+    - lib/strict-non-empty-containers
+    - lib/core
+    - lib/test-utils
+    - lib/numeric
+    - lib/launcher
+    - lib/core-integration
+    - lib/cli
+    - lib/shelley
+  # nix-sha256: sha256-5IZuqlE/4aGH3TEuGYQsZwOpI/Q7DYzJ4q3stuqGpWc= 
+- git: https://github.com/input-output-hk/ouroboros-network
+  commit: 1f4973f36f689d6da75b5d351fb124d66ef1057d
+  subdirs:
+    - monoidal-synchronisation
+    - typed-protocols
+    - typed-protocols-cborg
+    - typed-protocols-examples
+    - ouroboros-network
+    - ouroboros-network-testing
+    - ouroboros-network-framework
+    - ouroboros-consensus
+    - ouroboros-consensus-byron
+    - ouroboros-consensus-cardano
+    - ouroboros-consensus-shelley
+    - io-sim
+    - io-classes
+    - network-mux
+    - ntp-client
+- git: https://github.com/input-output-hk/iohk-monitoring-framework
+  commit: 46f994e216a1f8b36fe4669b47b2a7011b0e153c
+  subdirs:
+    - iohk-monitoring
+    - tracer-transformers
+    - contra-tracer
+    - plugins/backend-aggregation
+    - plugins/backend-ekg
+    - plugins/backend-monitoring
+    - plugins/backend-trace-forwarder
+    - plugins/scribe-systemd
+  # nix-sha256: sha256-QE3QRpIHIABm+qCP/wP4epbUx0JmSJ9BMePqWEd3iMY=
+- git: https://github.com/input-output-hk/cardano-ledger-specs
+  commit: bf008ce028751cae9fb0b53c3bef20f07c06e333
+  subdirs:
+    - byron/ledger/impl
+    - cardano-ledger-core
+    - cardano-protocol-tpraos
+    - eras/alonzo/impl
+    - eras/byron/chain/executable-spec
+    - eras/byron/crypto
+    - eras/byron/crypto/test
+    - eras/byron/ledger/executable-spec
+    - eras/byron/ledger/impl/test
+    - eras/shelley/impl
+    - eras/shelley-ma/impl
+    - eras/shelley/chain-and-ledger/executable-spec
+    - eras/shelley/test-suite
+    - shelley/chain-and-ledger/shelley-spec-ledger-test
+    - libs/non-integral
+    - libs/small-steps
+    - libs/cardano-ledger-pretty
+    - semantics/small-steps-test
+- git: https://github.com/input-output-hk/cardano-node.git
+  commit: b6ca519f97a0e795611a63174687e6bb70c9f752
+  subdirs:
+    - cardano-api
+    - cardano-node
+    - cardano-cli
+    - cardano-config
+- git: https://github.com/input-output-hk/optparse-applicative
+  commit: 7497a29cb998721a9068d5725d49461f2bba0e7a
+  # nix-sha256: sha256-uQx+SEYsCH7JcG3xAT0eJck9yq3y0cvx49bvItLLer8=
+- git: https://github.com/locallycompact/Win32-network
+  commit: 2d1a01c7cbb9f68a1aefe2934aad6c70644ebfea
+- git: https://github.com/input-output-hk/goblins
+  commit: cde90a2b27f79187ca8310b6549331e59595e7ba
+- git: https://github.com/input-output-hk/plutus
+  commit: 3f089ccf0ca746b399c99afe51e063b0640af547
+  subdirs:
+    - plutus-core
+    - plutus-ledger-api
+    - plutus-tx
+    - plutus-tx-plugin
+    - word-array
+    - prettyprinter-configurable
+    - stubs/plutus-ghc-stub
+- git: https://github.com/input-output-hk/plutus-apps
+  commit: 406f5f951358c1d44d31b1c5ba5f35b393eed195
+  subdirs:
+  - freer-extras
+  - playground-common
+  - plutus-chain-index
+  - plutus-chain-index-core
+  - plutus-contract
+  - plutus-ledger
+  - plutus-pab
+  - plutus-playground-server
+  - plutus-use-cases
+  - quickcheck-dynamic
+  - web-ghc
+  # nix-sha256: sha256-7QG4VOjBBX0A1YmBkdTxepl8ZXJ0XZpPxj0MHypE9W0=
+
+
+allow-newer: true

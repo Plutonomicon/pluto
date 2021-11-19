@@ -1,0 +1,8 @@
+-- Bump this if you need newer packages
+index-state: 2021-08-14T00:00:00Z
+
+packages: ./.
+
+write-ghc-environment-files: never
+
+test-show-details: streaming
