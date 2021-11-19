@@ -1,7 +1,10 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 
-module PlutusCore.Assembler.Types.Token ( Token ) where
+module PlutusCore.Assembler.Types.Token ( Token (..) ) where
 
 
-data Token
+import Data.Text (Text)
+
+
+data Token = Var Text | Force | Delay
