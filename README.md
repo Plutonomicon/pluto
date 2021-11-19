@@ -4,59 +4,61 @@ Syntax (rough and ambiguous)
 ============================
 
 ```
-Program := Term
+Program ::= Term
 
-Term := Var | Lambda | Apply | Force | Delay | Constant | Builtin | 'error'
-      | Let | IfThenElse | Case | '(' Term ')' | InfixApply
+Term ::= Var | Lambda | Apply | Force | Delay | Constant | Builtin | 'error'
+       | Let | IfThenElse | '(' Term ')' | InfixApply
 
-Var := [a-z][a-zA-Z0-9_]*
+Var ::= [a-z][a-zA-Z0-9_]*
 
-Lambda := '\' Var+ '->' Term
+Lambda ::= '\' Var+ '->' Term
 
-Apply := Term Term
+Apply ::= Term Term
 
-Force := '!' Term
+Force ::= '!' Term
 
-Delay := '#' Term
+Delay ::= '#' Term
 
-Constant := Integer | ByteString | Text | '()' | 'True' | 'False' | List | Tuple | Data
+Constant ::= Integer | ByteString | Text | '()' | 'True' | 'False' | List | Tuple | Data
 
-Integer := TODO
+List ::= '[' (Constant (',' Constant)*)? ']'
 
-ByteString := TODO
+Tuple ::= '(' Constant ',' Constant ')'
 
-Text := TODO
+Data ::= 'data' DataConstant
 
-List := '[' (Constant (',' Constant)*)? ']'
+DataConstant ::= DataConstr | DataMap | DataList | Integer | ByteString
 
-Tuple := '(' Constant ',' Constant ')'
+DataConstr ::= 'sigma' NonNegativeInteger Term
 
-Data := TODO
+DataMap ::= '{' (DataMapEntry (',' DataMapEntry)*)? '}'
 
-Builtin := 'AddInteger' | 'SubtractInteger' | 'MultiplyInteger' | 'DivideInteger'
-         | 'QuotientInteger' | 'RemainderInteger' | 'ModInteger' | 'EqualsInteger'
-         | 'LessThanInteger' | 'LessThanEqualsInteger' | 'AppendByteString'
-         | 'ConsByteString' | 'SliceByteString' | 'LengthByteString' | 'IndexByteString'
-         | 'EqualsByteString' | 'LessThanByteString' | 'LessThanEqualByteString'
-         | 'Sha2_256' | 'Sha3_256' | 'Blake2b_256' | 'VerifySignature' | 'AppendString'
-         | 'EqualsString' | 'EncodeUtf8' | 'DecodeUtf8' | 'IfThenElse' | 'ChooseUnit'
-         | 'Trace' | 'FstPair' | 'SndPair' | 'ChooseList' | 'MkCons' | 'HeadList'
-         | 'TailList' | 'NullList' | 'ChooseData' | 'ConstrData' | 'MapData' | 'ListData'
-         | 'IData' | 'BData' | 'UnConstrData' | 'UnMapData' | 'UNBData' | 'EqualsData'
-         | 'MkPairData' | 'MkNilData' | 'MkNilPairData'
+DataMapEntry ::= DataConstant '=' DataConstant
 
-Let := 'let' LetClause (';' LetClause)* 'in' Term
+DataList ::= '[' (DataConstant (',' DataConstant)*)? ']'
 
-LetClause := Var '=' Term
+Builtin ::= 'AddInteger' | 'SubtractInteger' | 'MultiplyInteger' | 'DivideInteger'
+          | 'QuotientInteger' | 'RemainderInteger' | 'ModInteger' | 'EqualsInteger'
+          | 'LessThanInteger' | 'LessThanEqualsInteger' | 'AppendByteString'
+          | 'ConsByteString' | 'SliceByteString' | 'LengthByteString' | 'IndexByteString'
+          | 'EqualsByteString' | 'LessThanByteString' | 'LessThanEqualByteString'
+          | 'Sha2_256' | 'Sha3_256' | 'Blake2b_256' | 'VerifySignature' | 'AppendString'
+          | 'EqualsString' | 'EncodeUtf8' | 'DecodeUtf8' | 'IfThenElse' | 'ChooseUnit'
+          | 'Trace' | 'FstPair' | 'SndPair' | 'ChooseList' | 'MkCons' | 'HeadList'
+          | 'TailList' | 'NullList' | 'ChooseData' | 'ConstrData' | 'MapData' | 'ListData'
+          | 'IData' | 'BData' | 'UnConstrData' | 'UnMapData' | 'UNBData' | 'EqualsData'
+          | 'MkPairData' | 'MkNilData' | 'MkNilPairData'
 
-IfThenElse = 'if' Term 'then' Term 'else' Term
+Let ::= 'let' LetClause (';' LetClause)* 'in' Term
 
-InfixApply := Term InfixBuiltin Term
+LetClause ::= Var '=' Term
 
-InfixBuiltin := '+i' | '-i' | '*i' | '/i' | '%i' | '==i' | '<i' | '<=i'
-              | '+b' | ':b' | '!b' | '==b' | '<b' | '<=b'
-              | '+s' | '==s'
-              | '==d'
+IfThenElse ::= 'if' Term 'then' Term 'else' Term
 
-Case := TODO
+InfixApply ::= Term InfixBuiltin Term
+
+InfixBuiltin ::= '+i' | '-i' | '*i' | '/i' | '%i' | '==i' | '<i' | '<=i'
+               | '+b' | ':b' | '!b' | '==b' | '<b' | '<=b'
+               | '+s' | '==s'
+               | '==d'
 ```
