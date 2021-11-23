@@ -33,7 +33,7 @@ tokenize = mapLeft (ErrorMessage . pack) . parseOnly tokens
 tokens :: Parser [Token]
 tokens = do
   ts <- many' (many' whitespace >> token)
-  endOfInput
+  many' whitespace >> endOfInput
   return ts
 
 

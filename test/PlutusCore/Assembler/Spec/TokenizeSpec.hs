@@ -15,7 +15,7 @@ import PlutusCore.Assembler.Tokenize (tokenize)
 
 
 genText :: Gen Text
-genText = Gen.text (Range.linear 0 1000) Gen.unicode
+genText = Gen.text (Range.linear 0 1000) Gen.ascii
 
 
 tests :: TestTree
