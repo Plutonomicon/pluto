@@ -6,6 +6,7 @@ module PlutusCore.Assembler.Parse ( parse ) where
 
 import Data.Either.Extra (mapLeft)
 import Data.Text (pack, unpack)
+import Text.Parsec (SourcePos)
 import qualified Text.Parsec.Prim as P
 
 import PlutusCore.Assembler.Prelude
@@ -17,20 +18,20 @@ import qualified PlutusCore.Assembler.Types.Token as Tok
 import PlutusCore.Assembler.Tokenize (printToken)
 
 
-type Parser = P.Parsec [Token] ()
+type Parser = P.Parsec [(Token, SourcePos)] ()
 
 
-parse :: [Token] -> Either ErrorMessage Program
+parse :: [(Token, SourcePos)] -> Either ErrorMessage Program
 parse = mapLeft (ErrorMessage . pack . show) . P.parse program "input"
 
 
-consume :: (Token -> Maybe a) -> Parser a
-consume = P.token (unpack . printToken) todo
+consume :: ((Token, SourcePos) -> Maybe a) -> Parser a
+consume = P.token (unpack . printToken . fst) snd
 
 
 consumeExact :: Token -> a -> Parser a
 consumeExact tok tm =
-  consume (\t -> guard (t == tok) >> return tm)
+  consume (\(t, _) -> guard (t == tok) >> return tm)
 
 
 program :: Parser Program
