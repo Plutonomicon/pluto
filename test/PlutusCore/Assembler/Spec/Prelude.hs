@@ -9,7 +9,8 @@ module PlutusCore.Assembler.Spec.Prelude
   ) where
 
 
-import PlutusCore.Assembler.Prelude
-import Test.Tasty (TestTree, testGroup)
-import Hedgehog (Gen, PropertyT, Range, assert, forAll, property, (===))
-import Test.Tasty.Hedgehog (testProperty)
+import           Hedgehog                     (Gen, PropertyT, Range, assert,
+                                               forAll, property, (===))
+import           PlutusCore.Assembler.Prelude
+import           Test.Tasty                   (TestTree, testGroup)
+import           Test.Tasty.Hedgehog          (testProperty)

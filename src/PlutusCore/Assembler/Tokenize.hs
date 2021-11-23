@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -10,16 +10,22 @@ module PlutusCore.Assembler.Tokenize
   ) where
 
 
-import qualified Data.ByteString as BS
-import Data.Either.Combinators (mapLeft)
-import Data.Text (cons, pack)
-import Data.Attoparsec.Text (Parser, parseOnly, endOfInput, many', many1, choice, char, string, inClass, notInClass, satisfy, signed, decimal, anyChar)
-import Data.Word (Word8)
+import           Data.Attoparsec.Text                    (Parser, anyChar, char,
+                                                          choice, decimal,
+                                                          endOfInput, inClass,
+                                                          many', many1,
+                                                          notInClass, parseOnly,
+                                                          satisfy, signed,
+                                                          string)
+import qualified Data.ByteString                         as BS
+import           Data.Either.Combinators                 (mapLeft)
+import           Data.Text                               (cons, pack)
+import           Data.Word                               (Word8)
 
-import PlutusCore.Assembler.Prelude
-import PlutusCore.Assembler.Types.Builtin (Builtin (..))
+import           PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Types.Builtin      (Builtin (..))
 import qualified PlutusCore.Assembler.Types.InfixBuiltin as Infix
-import PlutusCore.Assembler.Types.Token (Token (..))
+import           PlutusCore.Assembler.Types.Token        (Token (..))
 
 
 newtype ErrorMessage = ErrorMessage { getErrorMessage :: Text }

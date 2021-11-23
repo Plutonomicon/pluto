@@ -4,9 +4,9 @@
 module Main ( main ) where
 
 
-import Test.Tasty (defaultMain)
+import           Test.Tasty                             (defaultMain)
 
-import PlutusCore.Assembler.Spec.Prelude
+import           PlutusCore.Assembler.Spec.Prelude
 import qualified PlutusCore.Assembler.Spec.TokenizeSpec as Tokenize
 
 

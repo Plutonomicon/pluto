@@ -5,13 +5,13 @@
 module PlutusCore.Assembler.Spec.TokenizeSpec ( tests ) where
 
 
-import Control.Applicative (liftA2)
-import qualified Hedgehog.Gen as Gen
-import qualified Hedgehog.Range as Range
-import Data.Either.Extra (eitherToMaybe)
+import           Control.Applicative               (liftA2)
+import           Data.Either.Extra                 (eitherToMaybe)
+import qualified Hedgehog.Gen                      as Gen
+import qualified Hedgehog.Range                    as Range
 
-import PlutusCore.Assembler.Spec.Prelude
-import PlutusCore.Assembler.Tokenize (tokenize)
+import           PlutusCore.Assembler.Spec.Prelude
+import           PlutusCore.Assembler.Tokenize     (tokenize)
 
 
 genText :: Gen Text

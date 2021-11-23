@@ -4,7 +4,7 @@
 module PlutusCore.Assembler.Types.Builtin (Builtin (..)) where
 
 
-import PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Prelude
 
 
 data Builtin =

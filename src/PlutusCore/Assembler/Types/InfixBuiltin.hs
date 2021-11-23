@@ -4,11 +4,11 @@
 module PlutusCore.Assembler.Types.InfixBuiltin (InfixBuiltin (..)) where
 
 
-import PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Prelude
 
 
 data InfixBuiltin =
-    AddInteger 
+    AddInteger
   | SubtractInteger
   | MultiplyInteger
   | DivideInteger
