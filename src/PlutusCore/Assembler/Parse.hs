@@ -5,13 +5,16 @@ module PlutusCore.Assembler.Parse ( parse ) where
 
 
 import Data.Either.Extra (mapLeft)
-import Data.Text (pack)
+import Data.Text (pack, unpack)
 import qualified Text.Parsec.Prim as P
 
 import PlutusCore.Assembler.Prelude
 import PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
-import PlutusCore.Assembler.Types.AST (Program (..), Term (..))
-import PlutusCore.Assembler.Types.Token (Token (..))
+import PlutusCore.Assembler.Types.AST (Program, Term)
+import qualified PlutusCore.Assembler.Types.AST as AST
+import PlutusCore.Assembler.Types.Token (Token)
+import qualified PlutusCore.Assembler.Types.Token as Tok
+import PlutusCore.Assembler.Tokenize (printToken)
 
 
 type Parser = P.Parsec [Token] ()
@@ -21,8 +24,17 @@ parse :: [Token] -> Either ErrorMessage Program
 parse = mapLeft (ErrorMessage . pack . show) . P.parse program "input"
 
 
+consume :: (Token -> Maybe a) -> Parser a
+consume = P.token (unpack . printToken) todo
+
+
+consumeExact :: Token -> a -> Parser a
+consumeExact tok tm =
+  consume (\t -> guard (t == tok) >> return tm)
+
+
 program :: Parser Program
-program = Program <$> term
+program = AST.Program <$> term
 
 
 term :: Parser Term
@@ -41,7 +53,7 @@ term1 :: Parser Term
 term1 = do
   t  <- term1
   ts <- P.many term2
-  return $ foldl Apply t ts
+  return $ foldl AST.Apply t ts
 
 
 term2 :: Parser Term
@@ -85,7 +97,7 @@ builtinTerm = todo
 
 
 errorTerm :: Parser Term
-errorTerm = todo
+errorTerm = consumeExact Tok.Error AST.Error
 
 
 parenthesizedTerm :: Parser Term

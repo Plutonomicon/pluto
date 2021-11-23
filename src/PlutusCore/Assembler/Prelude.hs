@@ -12,7 +12,7 @@ module PlutusCore.Assembler.Prelude
 
 
 import           Control.Applicative (Applicative (pure), liftA2, (<*>), (<|>))
-import           Control.Monad       (mzero, void)
+import           Control.Monad       (mzero, void, guard)
 import           Data.ByteString     (ByteString)
 import           Data.Either.Extra   (eitherToMaybe)
 import           Data.Text           (Text)
