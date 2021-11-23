@@ -4,13 +4,15 @@
 module PlutusCore.Assembler.Types.InfixBuiltin (InfixBuiltin (..)) where
 
 
+import           PlutusCore.Assembler.Prelude
+
+
 data InfixBuiltin =
-    AddInteger 
+    AddInteger
   | SubtractInteger
   | MultiplyInteger
   | DivideInteger
   | RemainderInteger
-  | ModInteger
   | EqualsInteger
   | LessThanInteger
   | LessThanEqualsInteger
@@ -23,3 +25,4 @@ data InfixBuiltin =
   | AppendString
   | EqualsString
   | EqualsData
+  deriving (Eq, Show, Bounded, Enum)

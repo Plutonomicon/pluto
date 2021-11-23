@@ -15,9 +15,9 @@ module PlutusCore.Assembler.Types.AST
   ) where
 
 
-import PlutusCore.Assembler.Prelude
-import PlutusCore.Assembler.Types.Constant (Constant)
-import PlutusCore.Assembler.Types.Builtin (Builtin)
+import           PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Types.Builtin  (Builtin)
+import           PlutusCore.Assembler.Types.Constant (Constant)
 
 
 newtype Program = Program { unProgram :: Term }

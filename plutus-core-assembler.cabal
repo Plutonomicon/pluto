@@ -8,46 +8,94 @@ maintainer:    ryanmatovu@gmail.com
 
 
 library
-    exposed-modules:
-      PlutusCore.Assembler.Prelude
-      PlutusCore.Assembler.Tokenize
-      PlutusCore.Assembler.Types.AST
-      PlutusCore.Assembler.Types.Builtin
-      PlutusCore.Assembler.Types.Constant
-      PlutusCore.Assembler.Types.InfixBuiltin
-      PlutusCore.Assembler.Types.Token
-    build-depends:
-      base >= 4.9 && < 5,
-      aeson,
-      attoparsec,
-      bytestring,
-      containers,
-      either,
-      generic-lens,
-      ghc-prim,
-      hedgehog -any,
-      lens,
-      text -any,
-      mtl,
-      playground-common,
-      plutus-pab,
-      plutus-core,
-      plutus-contract,
-      plutus-tx-plugin,
-      plutus-tx,
-      plutus-ledger,
-      plutus-ledger-api,
-      tasty -any,
-      tasty-hedgehog -any,
-      -- Dependencies for cbor script calculation (used by exe:dana-swap-cbor
-      cardano-api -any,
-      serialise -any,
-      cardano-ledger-alonzo -any
+  exposed-modules:
+    PlutusCore.Assembler.Prelude
+    PlutusCore.Assembler.Tokenize
+    PlutusCore.Assembler.Types.AST
+    PlutusCore.Assembler.Types.Builtin
+    PlutusCore.Assembler.Types.Constant
+    PlutusCore.Assembler.Types.InfixBuiltin
+    PlutusCore.Assembler.Types.Token
+  build-depends:
+    base >= 4.9 && < 5,
+    aeson,
+    attoparsec,
+    bytestring,
+    containers,
+    either,
+    extra,
+    generic-lens,
+    ghc-prim,
+    hedgehog -any,
+    hex-text,
+    lens,
+    text -any,
+    mtl,
+    playground-common,
+    plutus-pab,
+    plutus-core,
+    plutus-contract,
+    plutus-tx-plugin,
+    plutus-tx,
+    plutus-ledger,
+    plutus-ledger-api,
+    tasty -any,
+    tasty-hedgehog -any,
+    cardano-api -any,
+    serialise -any,
+    cardano-ledger-alonzo -any
 
-    hs-source-dirs: src
-    default-language: Haskell2010
-    ghc-options:
-            -- See Plutus Tx readme
-            -Wall -Werror -Wcompat -fwarn-redundant-constraints -fwarn-incomplete-uni-patterns
-            -fwarn-tabs -fwarn-incomplete-record-updates -fwarn-identities -Wmissing-export-lists
-            -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-strictness -fno-ignore-interface-pragmas -fno-specialise
+  hs-source-dirs: src
+  default-language: Haskell2010
+  ghc-options:
+          -- See Plutus Tx readme
+          -Wall -Werror -Wcompat -fwarn-redundant-constraints -fwarn-incomplete-uni-patterns
+          -fwarn-tabs -fwarn-incomplete-record-updates -fwarn-identities -Wmissing-export-lists
+          -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-strictness -fno-ignore-interface-pragmas -fno-specialise
+
+
+test-suite spec
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+
+  other-modules:
+    PlutusCore.Assembler.Spec.Prelude
+    PlutusCore.Assembler.Spec.TokenizeSpec
+
+  build-depends:
+    base >= 4.9 && < 5,
+    aeson,
+    attoparsec,
+    bytestring,
+    containers,
+    either,
+    extra,
+    generic-lens,
+    ghc-prim,
+    hedgehog -any,
+    lens,
+    text -any,
+    mtl,
+    playground-common,
+    plutus-pab,
+    plutus-core,
+    plutus-contract,
+    plutus-tx-plugin,
+    plutus-tx,
+    plutus-ledger,
+    plutus-ledger-api,
+    tasty -any,
+    tasty-hedgehog -any,
+    cardano-api -any,
+    serialise -any,
+    cardano-ledger-alonzo -any,
+
+    plutus-core-assembler
+
+  hs-source-dirs: test
+  default-language: Haskell2010
+  ghc-options:
+          -- See Plutus Tx readme
+          -Wall -Werror -Wcompat -fwarn-redundant-constraints -fwarn-incomplete-uni-patterns
+          -fwarn-tabs -fwarn-incomplete-record-updates -fwarn-identities -Wmissing-export-lists
+          -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-strictness -fno-ignore-interface-pragmas -fno-specialise

@@ -1,28 +1,40 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 
 module PlutusCore.Assembler.Tokenize
   ( tokenize
+  , printToken
+  , printBuiltin
+  , printInfixBuiltin
+  , escapeText
   , Token (..)
   , ErrorMessage (..)
   ) where
 
 
-import qualified Data.ByteString as BS
-import Data.Either.Combinators (mapLeft)
-import Data.Text (cons, pack)
-import Data.Attoparsec.Text (Parser, parseOnly, endOfInput, many', many1, choice, char, string, inClass, notInClass, satisfy, signed, decimal)
-import Data.Word (Word8)
+import           Data.Attoparsec.Text                    (Parser, anyChar, char,
+                                                          choice, decimal,
+                                                          endOfInput, inClass,
+                                                          many', notInClass,
+                                                          parseOnly, peekChar,
+                                                          satisfy, signed,
+                                                          string)
+import qualified Data.ByteString                         as BS
+import           Data.Either.Combinators                 (mapLeft)
+import           Data.Text                               (cons, pack, replace)
+import           Data.Word                               (Word8)
+import           Text.Hex                                (encodeHex)
 
-import PlutusCore.Assembler.Prelude
-import PlutusCore.Assembler.Types.Builtin (Builtin (..))
+import           PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Types.Builtin      (Builtin (..))
 import qualified PlutusCore.Assembler.Types.InfixBuiltin as Infix
-import PlutusCore.Assembler.Types.Token (Token (..))
+import           PlutusCore.Assembler.Types.Token        (Token (..))
 
 
 newtype ErrorMessage = ErrorMessage { getErrorMessage :: Text }
+  deriving (Eq, Show)
 
 
 tokenize :: Text -> Either ErrorMessage [Token]
@@ -32,16 +44,16 @@ tokenize = mapLeft (ErrorMessage . pack) . parseOnly tokens
 tokens :: Parser [Token]
 tokens = do
   ts <- many' (many' whitespace >> token)
-  endOfInput
+  many' whitespace >> endOfInput
   return ts
 
 
 whitespace :: Parser ()
-whitespace = void (satisfy (inClass " \t\r\n")) <|> comment
+whitespace = void (satisfy (inClass " \t\r\n")) <|> oneLineComment <|> multiLineComment
 
 
-comment :: Parser ()
-comment = do
+oneLineComment :: Parser ()
+oneLineComment = do
   void $ string "--"
   void $ many' (satisfy (notInClass lineEnding))
   void $ satisfy (inClass lineEnding)
@@ -49,18 +61,31 @@ comment = do
     lineEnding = "\r\n"
 
 
+multiLineComment :: Parser ()
+multiLineComment = do
+  void $ string "{-"
+  rest
+
+  where
+    rest :: Parser ()
+    rest = void (string "-}") <|> (void anyChar >> rest)
+
+
 token :: Parser Token
 token =
   choice
   [ lambda
   , arrow
-  , forceKeyword
-  , delayKeyword
+  -- infixBuiltin must come before force to deal with ambiguity
+  , infixBuiltin
+  , force
+  , delay
   , openParen
   , closeParen
   , errorKeyword
-  , integerLiteral
+  -- byteStringLiteral must come before integerLiteral to deal with ambiguity
   , byteStringLiteral
+  , integerLiteral
   , textLiteral
   , boolLiteral
   , openBracket
@@ -72,14 +97,13 @@ token =
   , sigmaKeyword
   , equals
   , builtin
-  , infixBuiltin
   , letKeyword
   , semicolon
   , inKeyword
   , ifKeyword
   , thenKeyword
   , elseKeyword
-  -- WARNING: var must come last in order to disambiguate tokenizing wrt keywords!
+  -- var must come last in order to deal with ambiguity
   , var
   ]
 
@@ -99,12 +123,12 @@ arrow :: Parser Token
 arrow = Arrow <$ string "->"
 
 
-forceKeyword :: Parser Token
-forceKeyword = Force <$ string "force"
+force :: Parser Token
+force = Force <$ char '!'
 
 
-delayKeyword :: Parser Token
-delayKeyword = Delay <$ string "delay"
+delay :: Parser Token
+delay = Delay <$ char '#'
 
 
 openParen :: Parser Token
@@ -116,7 +140,7 @@ closeParen = CloseParen <$ char ')'
 
 
 errorKeyword :: Parser Token
-errorKeyword = Error <$ string "error"
+errorKeyword = Error <$ string "Error"
 
 
 integerLiteral :: Parser Token
@@ -130,7 +154,7 @@ byteStringLiteral = hexadecimalByteStringLiteral
 hexadecimalByteStringLiteral :: Parser Token
 hexadecimalByteStringLiteral = do
   void $ string "0x"
-  ByteString . BS.pack <$> many1 hexByteLiteral
+  ByteString . BS.pack <$> many' hexByteLiteral
 
 
 hexByteLiteral :: Parser Word8
@@ -206,7 +230,7 @@ textLiteral = do
 
 
 boolLiteral :: Parser Token
-boolLiteral = (Bool True <$ string "true") <|> (Bool False <$ string "false")
+boolLiteral = (Bool True <$ string "True") <|> (Bool False <$ string "False")
 
 
 openBracket :: Parser Token
@@ -288,6 +312,7 @@ builtin =
   , BData <$ string "BData"
   , UnConstrData <$ string "UnConstrData"
   , UnMapData <$ string "UnMapData"
+  , UnBData <$ string "UnBData"
   , EqualsData <$ string "EqualsData"
   , MkPairData <$ string "MkPairData"
   , MkNilData <$ string "MkNilData"
@@ -319,7 +344,7 @@ infixBuiltin =
 
 
 letKeyword :: Parser Token
-letKeyword = Let <$ string "let"
+letKeyword = Let <$ peekNonName (string "let")
 
 
 semicolon :: Parser Token
@@ -327,16 +352,100 @@ semicolon = Semicolon <$ char ';'
 
 
 inKeyword :: Parser Token
-inKeyword = In <$ string "in"
+inKeyword = In <$ peekNonName (string "in")
 
 
 ifKeyword :: Parser Token
-ifKeyword = If <$ string "if"
+ifKeyword = If <$ peekNonName (string "if")
 
 
 thenKeyword :: Parser Token
-thenKeyword = Then <$ string "then"
+thenKeyword = Then <$ peekNonName (string "then")
 
 
 elseKeyword :: Parser Token
-elseKeyword = Else <$ string "else"
+elseKeyword = Else <$ peekNonName (string "else")
+
+
+-- This parser consumes no input but resolves parsing ambiguity by not accepting the parse
+-- if the thing we are parsing could be a variable name.
+peekNonName :: Parser a -> Parser a
+peekNonName p = do
+  x  <- p
+  mc <- peekChar
+  case mc of
+    Nothing -> return x
+    Just c ->
+      if ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || c == '_'
+      then mzero
+      else return x
+
+
+-- Maps a token to its unique syntactic form.
+printToken :: Token -> Text
+printToken =
+  \case
+    Var x          -> x
+    Lambda         -> "\\"
+    Arrow          -> "->"
+    Force          -> "!"
+    Delay          -> "#"
+    OpenParen      -> "("
+    CloseParen     -> ")"
+    Error          -> "Error"
+    Integer i      -> pack (show i)
+    ByteString b   -> "0x" <> encodeHex b
+    Text t         -> "\"" <> escapeText t <> "\""
+    Bool True      -> "True"
+    Bool False     -> "False"
+    OpenBracket    -> "["
+    CloseBracket   -> "]"
+    Comma          -> ","
+    OpenBrace      -> "{"
+    CloseBrace     -> "}"
+    Data           -> "data"
+    Sigma          -> "sigma"
+    Equals         -> "="
+    Builtin b      -> printBuiltin b
+    InfixBuiltin b -> printInfixBuiltin b
+    Let            -> "let"
+    Semicolon      -> ";"
+    In             -> "in"
+    If             -> "if"
+    Then           -> "then"
+    Else           -> "else"
+
+
+escapeText :: Text -> Text
+escapeText =
+    replace "\"" "\\\""
+  . replace "\r" "\\r"
+  . replace "\n" "\\n"
+  . replace "\t" "\\t"
+  . replace "\\" "\\\\"
+
+
+printBuiltin :: Builtin -> Text
+printBuiltin = pack . show
+
+
+printInfixBuiltin :: Infix.InfixBuiltin -> Text
+printInfixBuiltin =
+  \case
+    Infix.AddInteger              -> "+i"
+    Infix.SubtractInteger         -> "-i"
+    Infix.MultiplyInteger         -> "*i"
+    Infix.DivideInteger           -> "/i"
+    Infix.RemainderInteger        -> "%i"
+    Infix.EqualsInteger           -> "==i"
+    Infix.LessThanInteger         -> "<i"
+    Infix.LessThanEqualsInteger   -> "<=i"
+    Infix.AppendByteString        -> "+b"
+    Infix.ConsByteString          -> ":b"
+    Infix.IndexByteString         -> "!b"
+    Infix.EqualsByteString        -> "==b"
+    Infix.LessThanByteString      -> "<b"
+    Infix.LessThanEqualByteString -> "<=b"
+    Infix.AppendString            -> "+s"
+    Infix.EqualsString            -> "==s"
+    Infix.EqualsData              -> "==d"

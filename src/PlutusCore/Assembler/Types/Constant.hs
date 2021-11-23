@@ -6,8 +6,8 @@ module PlutusCore.Assembler.Types.Constant
   ) where
 
 
-import PlutusCore.Assembler.Prelude
-import PlutusCore.Data (Data)
+import           PlutusCore.Assembler.Prelude
+import           PlutusCore.Data              (Data)
 
 
 data Constant =

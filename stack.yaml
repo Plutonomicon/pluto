@@ -54,6 +54,11 @@ extra-deps:
 - th-extras-0.0.0.4@sha256:2f408c0f427530f36beb19c733a7a57f67b727713f9bb942b64f3b2e0e2932bf,1457
 
 
+- git: https://github.com/typeclasses/hex-text.git
+  commit: 5c737d002ed034a8dc8b39e9ced01b12ebc97ed8
+  subdirs:
+    - hex-text
+  # nix-sha256: 1mrhfvflrdz1ld3mfpl6cd3khjzbamgnlg884fxji98cw39qy29c
 - git: https://github.com/Quid2/flat.git
   commit: ee59880f47ab835dbd73bea0847dab7869fc20d8
 - git: https://github.com/input-output-hk/purescript-bridge.git

@@ -6,7 +6,7 @@ Syntax (rough and ambiguous)
 ```
 Program ::= Term
 
-Term ::= Var | Lambda | Apply | Force | Delay | Constant | Builtin | 'error'
+Term ::= Var | Lambda | Apply | Force | Delay | Constant | Builtin | 'Error'
        | Let | IfThenElse | '(' Term ')' | InfixApply
 
 Var ::= [a-z][a-zA-Z0-9_]*
@@ -19,7 +19,7 @@ Force ::= '!' Term
 
 Delay ::= '#' Term
 
-Constant ::= Integer | ByteString | Text | '()' | 'true' | 'false' | List | Tuple | Data
+Constant ::= Integer | ByteString | Text | '()' | 'True' | 'False' | List | Tuple | Data
 
 List ::= '[' (Constant (',' Constant)*)? ']'
 

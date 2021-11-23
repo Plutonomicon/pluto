@@ -5,13 +5,20 @@ module PlutusCore.Assembler.Prelude
   ( module Control.Applicative
   , module Control.Monad
   , module Data.ByteString
+  , module Data.Either.Extra
   , module Data.Text
   , module Prelude
   ) where
 
 
-import Control.Applicative ((<|>))
-import Control.Monad (void)
-import Data.ByteString (ByteString)
-import Data.Text (Text)
-import Prelude (Integer, Bool (True, False), Either (Left, Right), (.), (>>), Monad ((>>=), return), (<$), ($), (<>), (<$>), Num ((*), (+)), Char, String)
+import           Control.Applicative (Applicative (pure), liftA2, (<*>), (<|>))
+import           Control.Monad       (mzero, void)
+import           Data.ByteString     (ByteString)
+import           Data.Either.Extra   (eitherToMaybe)
+import           Data.Text           (Text)
+import           Prelude             (Bool (False, True), Bounded, Char,
+                                      Either (Left, Right), Enum, Eq, IO,
+                                      Integer, Maybe (Just, Nothing),
+                                      Monad (return, (>>=)), Num ((*), (+)),
+                                      Show (show), String, ($), (&&), (.), (/=),
+                                      (<$), (<$>), (<=), (<>), (==), (>>), (||))
