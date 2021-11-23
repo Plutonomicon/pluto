@@ -31,10 +31,7 @@ import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Types.Builtin      (Builtin (..))
 import qualified PlutusCore.Assembler.Types.InfixBuiltin as Infix
 import           PlutusCore.Assembler.Types.Token        (Token (..))
-
-
-newtype ErrorMessage = ErrorMessage { getErrorMessage :: Text }
-  deriving (Eq, Show)
+import PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
 
 
 tokenize :: Text -> Either ErrorMessage [Token]

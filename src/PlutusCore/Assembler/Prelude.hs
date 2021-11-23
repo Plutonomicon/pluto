@@ -21,4 +21,4 @@ import           Prelude             (Bool (False, True), Bounded, Char,
                                       Integer, Maybe (Just, Nothing),
                                       Monad (return, (>>=)), Num ((*), (+)),
                                       Show (show), String, ($), (&&), (.), (/=),
-                                      (<$), (<$>), (<=), (<>), (==), (>>), (||))
+                                      (<$), (<$>), (<=), (<>), (==), (>>), (||), foldl)
