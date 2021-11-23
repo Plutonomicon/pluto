@@ -18,7 +18,7 @@ import           Data.Either.Extra   (eitherToMaybe)
 import           Data.Text           (Text)
 import           Prelude             (Bool (False, True), Bounded, Char,
                                       Either (Left, Right), Enum, Eq, IO,
-                                      Integer, Maybe (Just, Nothing),
+                                      Integer, Maybe (Just, Nothing), Functor (fmap), negate,
                                       Monad (return, (>>=)), Num ((*), (+)),
                                       Show (show), String, ($), (&&), (.), (/=),
                                       (<$), (<$>), (<=), (<>), (==), (>>), (||), foldl, fst, snd)

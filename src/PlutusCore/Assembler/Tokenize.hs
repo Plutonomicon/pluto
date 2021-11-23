@@ -14,13 +14,10 @@ module PlutusCore.Assembler.Tokenize
   ) where
 
 
-import           Data.Attoparsec.Text                    (Parser, anyChar, char,
-                                                          choice, decimal,
-                                                          endOfInput, inClass,
-                                                          many', notInClass,
-                                                          parseOnly, peekChar,
-                                                          satisfy, signed,
-                                                          string)
+import Text.Parsec.Text (Parser)
+import Text.Parsec.Prim (parse, many, lookAhead, try)
+import Text.Parsec (eof, many1, choice)
+import Text.Parsec.Char (oneOf, string, noneOf, anyChar, char)
 import qualified Data.ByteString                         as BS
 import           Data.Either.Combinators                 (mapLeft)
 import           Data.Text                               (cons, pack, replace)
@@ -34,26 +31,33 @@ import           PlutusCore.Assembler.Types.Token        (Token (..))
 import PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
 
 
+-- TODO: convert to Parsec and output [(Token, SourcePos)]
+
+
 tokenize :: Text -> Either ErrorMessage [Token]
-tokenize = mapLeft (ErrorMessage . pack) . parseOnly tokens
+tokenize = mapLeft (ErrorMessage . pack . show) . parse tokens "input"
 
 
 tokens :: Parser [Token]
 tokens = do
-  ts <- many' (many' whitespace >> token)
-  many' whitespace >> endOfInput
+  void (many whitespace)
+  ts <- many $ do
+         t <- token
+         void (many whitespace)
+         return t
+  eof
   return ts
 
 
 whitespace :: Parser ()
-whitespace = void (satisfy (inClass " \t\r\n")) <|> oneLineComment <|> multiLineComment
+whitespace = void (oneOf " \t\r\n") <|> try oneLineComment <|> try multiLineComment
 
 
 oneLineComment :: Parser ()
 oneLineComment = do
   void $ string "--"
-  void $ many' (satisfy (notInClass lineEnding))
-  void $ satisfy (inClass lineEnding)
+  void $ many (noneOf lineEnding)
+  void $ oneOf lineEnding
   where
     lineEnding = "\r\n"
 
@@ -65,12 +69,15 @@ multiLineComment = do
 
   where
     rest :: Parser ()
-    rest = void (string "-}") <|> (void anyChar >> rest)
+    rest = void (try (string "-}")) <|> (void anyChar >> rest)
 
 
 token :: Parser Token
 token =
   choice
+  $
+  try
+  <$>
   [ lambda
   , arrow
   -- infixBuiltin must come before force to deal with ambiguity
@@ -107,8 +114,8 @@ token =
 
 var :: Parser Token
 var = do
-  first <- satisfy (inClass ['a'..'z'])
-  rest  <- many' (satisfy (inClass (['a'..'z'] <> ['A'..'Z'] <> ['0'..'9'] <> "_")))
+  first <- oneOf ['a'..'z']
+  rest  <- many (oneOf (['a'..'z'] <> ['A'..'Z'] <> ['0'..'9'] <> "_"))
   return (Var (cons first (pack rest)))
 
 
@@ -141,7 +148,38 @@ errorKeyword = Error <$ string "Error"
 
 
 integerLiteral :: Parser Token
-integerLiteral = Integer <$> signed decimal
+integerLiteral = Integer <$> (positiveIntegerLiteral <|> negativeIntegerLiteral)
+
+
+negativeIntegerLiteral :: Parser Integer
+negativeIntegerLiteral = do
+  void (char '-')
+  negate <$> positiveIntegerLiteral
+
+
+positiveIntegerLiteral :: Parser Integer
+positiveIntegerLiteral =
+  digitsToInteger <$> many1 (oneOf ['0'..'9'])
+
+
+digitToInteger :: Char -> Integer
+digitToInteger =
+  \case
+    '0' -> 0
+    '1' -> 1
+    '2' -> 2
+    '3' -> 3
+    '4' -> 4
+    '5' -> 5
+    '6' -> 6
+    '7' -> 7
+    '8' -> 8
+    '9' -> 9
+    _   -> 0
+
+
+digitsToInteger :: String -> Integer
+digitsToInteger = foldl (\a x -> a * 10 + x) 0 . fmap digitToInteger
 
 
 byteStringLiteral :: Parser Token
@@ -151,7 +189,7 @@ byteStringLiteral = hexadecimalByteStringLiteral
 hexadecimalByteStringLiteral :: Parser Token
 hexadecimalByteStringLiteral = do
   void $ string "0x"
-  ByteString . BS.pack <$> many' hexByteLiteral
+  ByteString . BS.pack <$> many hexByteLiteral
 
 
 hexByteLiteral :: Parser Word8
@@ -162,7 +200,7 @@ hexByteLiteral = do
 
 
 hexDigit :: Parser Word8
-hexDigit = hexCharToWord8 <$> satisfy (inClass (['0'..'9'] <> ['a'..'f'] <> ['A'..'F']))
+hexDigit = hexCharToWord8 <$> oneOf (['0'..'9'] <> ['a'..'f'] <> ['A'..'F'])
 
 
 hexCharToWord8 :: Char -> Word8
@@ -196,13 +234,13 @@ hexCharToWord8 =
 textLiteral :: Parser Token
 textLiteral = do
   void $ char '"'
-  chars <- many' character
+  chars <- many character
   void $ char '"'
   return (Text (pack chars))
 
   where
     character :: Parser Char
-    character = satisfy (notInClass specialChar) <|> escapeCode
+    character = noneOf specialChar <|> escapeCode
 
     specialChar :: String
     specialChar = "\"\\\r\n\t"
@@ -213,11 +251,11 @@ textLiteral = do
       literalEscapeCode <|> letterEscapeCode
 
     literalEscapeCode :: Parser Char
-    literalEscapeCode = satisfy (inClass "\"\\")
+    literalEscapeCode = oneOf "\"\\"
 
     letterEscapeCode :: Parser Char
     letterEscapeCode = do
-      c <- satisfy (inClass "rnt")
+      c <- oneOf "rnt"
       return $
         case c of
           'r' -> '\r'
@@ -264,7 +302,13 @@ equals = Equals <$ char '='
 
 builtin :: Parser Token
 builtin =
-  Builtin <$> choice
+  Builtin
+  <$>
+  (
+  choice
+  $
+  try
+  <$>
   [ AddInteger <$ string "AddInteger"
   , SubtractInteger <$ string "SubtractInteger"
   , MultiplyInteger <$ string "MultiplyInteger"
@@ -315,11 +359,18 @@ builtin =
   , MkNilData <$ string "MkNilData"
   , MkNilPairData <$ string "MkNilPairData"
   ]
+  )
 
 
 infixBuiltin :: Parser Token
 infixBuiltin =
-  InfixBuiltin <$> choice
+  InfixBuiltin
+  <$>
+  (
+  choice
+  $
+  try
+  <$>
   [ Infix.AddInteger <$ string "+i"
   , Infix.SubtractInteger <$ string "-i"
   , Infix.MultiplyInteger <$ string "*i"
@@ -338,6 +389,7 @@ infixBuiltin =
   , Infix.EqualsString <$ string "==s"
   , Infix.EqualsData <$ string "==d"
   ]
+  )
 
 
 letKeyword :: Parser Token
@@ -369,7 +421,7 @@ elseKeyword = Else <$ peekNonName (string "else")
 peekNonName :: Parser a -> Parser a
 peekNonName p = do
   x  <- p
-  mc <- peekChar
+  mc <- (Just <$> lookAhead anyChar) <|> (eof >> pure Nothing)
   case mc of
     Nothing -> return x
     Just c ->
