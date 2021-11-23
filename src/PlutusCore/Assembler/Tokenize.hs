@@ -311,6 +311,7 @@ builtin =
   , BData <$ string "BData"
   , UnConstrData <$ string "UnConstrData"
   , UnMapData <$ string "UnMapData"
+  , UnBData <$ string "UnBData"
   , EqualsData <$ string "EqualsData"
   , MkPairData <$ string "MkPairData"
   , MkNilData <$ string "MkNilData"
