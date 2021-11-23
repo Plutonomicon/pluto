@@ -26,4 +26,4 @@ data InfixBuiltin =
   | AppendString
   | EqualsString
   | EqualsData
-  deriving Show
+  deriving (Eq, Show)

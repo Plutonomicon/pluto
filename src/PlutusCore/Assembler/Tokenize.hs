@@ -23,7 +23,7 @@ import PlutusCore.Assembler.Types.Token (Token (..))
 
 
 newtype ErrorMessage = ErrorMessage { getErrorMessage :: Text }
-  deriving Show
+  deriving (Eq, Show)
 
 
 tokenize :: Text -> Either ErrorMessage [Token]

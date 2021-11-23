@@ -14,4 +14,4 @@ data Token = Var Text | Lambda | Arrow | Force | Delay | OpenParen | CloseParen 
            | OpenBracket | CloseBracket | Comma | OpenBrace | CloseBrace
            | Data | Sigma | Equals | Builtin Builtin | InfixBuiltin InfixBuiltin
            | Let | Semicolon | In | If | Then | Else
-  deriving Show
+  deriving (Eq, Show)

@@ -57,4 +57,4 @@ data Builtin =
   | MkPairData
   | MkNilData
   | MkNilPairData
-  deriving Show
+  deriving (Eq, Show)
