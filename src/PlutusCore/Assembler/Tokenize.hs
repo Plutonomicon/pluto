@@ -13,7 +13,7 @@ module PlutusCore.Assembler.Tokenize
 import qualified Data.ByteString as BS
 import Data.Either.Combinators (mapLeft)
 import Data.Text (cons, pack)
-import Data.Attoparsec.Text (Parser, parseOnly, endOfInput, many', many1, choice, char, string, inClass, notInClass, satisfy, signed, decimal)
+import Data.Attoparsec.Text (Parser, parseOnly, endOfInput, many', many1, choice, char, string, inClass, notInClass, satisfy, signed, decimal, anyChar)
 import Data.Word (Word8)
 
 import PlutusCore.Assembler.Prelude
@@ -38,16 +38,26 @@ tokens = do
 
 
 whitespace :: Parser ()
-whitespace = void (satisfy (inClass " \t\r\n")) <|> comment
+whitespace = void (satisfy (inClass " \t\r\n")) <|> oneLineComment <|> multiLineComment
 
 
-comment :: Parser ()
-comment = do
+oneLineComment :: Parser ()
+oneLineComment = do
   void $ string "--"
   void $ many' (satisfy (notInClass lineEnding))
   void $ satisfy (inClass lineEnding)
   where
     lineEnding = "\r\n"
+
+
+multiLineComment :: Parser ()
+multiLineComment = do
+  void $ string "{-"
+  rest
+
+  where
+    rest :: Parser ()
+    rest = void (string "-}") <|> (void anyChar >> rest)
 
 
 token :: Parser Token
