@@ -25,18 +25,19 @@ genWhitespace = Gen.text (Range.singleton 1) (Gen.element [' ', '\r', '\n'])
 tests :: TestTree
 tests =
   testGroup "tokenize"
-  [ commutesWithConcatByNewlineTest
+  [ commutesWithConcatByWhitespaceTest
   , prependWhitespaceTest
   , appendWhitespaceTest
   ]
 
 
-commutesWithConcatByNewlineTest :: TestTree
-commutesWithConcatByNewlineTest =
-  testProperty "commutes with concatenating strings separated by a newline" . property $ do
+commutesWithConcatByWhitespaceTest :: TestTree
+commutesWithConcatByWhitespaceTest =
+  testProperty "commutes with concatenating strings separated by whitespace" . property $ do
     t0 <- forAll genText
     t1 <- forAll genText
-    liftA2 (<>) (f t0) (f t1) === f (t0 <> "\n" <> t1)
+    w  <- forAll genWhitespace
+    liftA2 (<>) (f t0) (f t1) === f (t0 <> w <> t1)
     return ()
   where f = eitherToMaybe . tokenize
 
