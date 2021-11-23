@@ -18,4 +18,4 @@ import           Prelude             (Bool (False, True), Char,
                                       Either (Left, Right), Eq, IO, Integer,
                                       Monad (return, (>>=)), Num ((*), (+)),
                                       Show, String, ($), (.), (<$), (<$>), (<>),
-                                      (>>))
+                                      (>>), (/=), (==), (&&), (||))

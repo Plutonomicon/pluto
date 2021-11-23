@@ -19,7 +19,25 @@ genText = Gen.text (Range.linear 0 1000) Gen.ascii
 
 
 genWhitespace :: Gen Text
-genWhitespace = Gen.text (Range.singleton 1) (Gen.element [' ', '\r', '\n'])
+genWhitespace = Gen.choice
+  [ Gen.text (Range.singleton 1) (Gen.element [' ', '\r', '\n'])
+  , genSingleLineComment
+  , genMultiLineComment
+  ]
+
+
+genSingleLineComment :: Gen Text
+genSingleLineComment =
+  ((<> "\n") . ("--" <>)) <$>
+  Gen.text (Range.linear 0 1000)
+    (Gen.element [ c | c <- ['\0'..'\xff'], c /= '\r' && c /= '\n' ])
+
+
+genMultiLineComment :: Gen Text
+genMultiLineComment =
+  ((<> "-}") . ("{-" <>)) <$>
+  Gen.text (Range.linear 0 1000)
+    (Gen.element [ c | c <- ['\0'..'\xff'], c /= '}' ])
 
 
 tests :: TestTree
