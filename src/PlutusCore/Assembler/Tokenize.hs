@@ -75,11 +75,14 @@ token =
   choice
   [ lambda
   , arrow
+  -- infixBuiltin must come before force to deal with ambiguity
+  , infixBuiltin
   , force
   , delay
   , openParen
   , closeParen
   , errorKeyword
+  -- byteStringLiteral must come before integerLiteral to deal with ambiguity
   , byteStringLiteral
   , integerLiteral
   , textLiteral
@@ -93,14 +96,13 @@ token =
   , sigmaKeyword
   , equals
   , builtin
-  , infixBuiltin
   , letKeyword
   , semicolon
   , inKeyword
   , ifKeyword
   , thenKeyword
   , elseKeyword
-  -- WARNING: var must come last in order to disambiguate tokenizing wrt keywords!
+  -- var must come last in order to deal with ambiguity
   , var
   ]
 
@@ -401,10 +403,10 @@ printToken =
 escapeText :: Text -> Text
 escapeText =
     replace "\"" "\\\""
-  . replace "\\" "\\\\"
   . replace "\r" "\\r"
   . replace "\n" "\\n"
   . replace "\t" "\\t"
+  . replace "\\" "\\\\"
 
 
 printBuiltin :: Builtin -> Text

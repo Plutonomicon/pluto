@@ -29,7 +29,7 @@ genToken =
   , pure OpenParen
   , pure CloseParen
   , pure Error
-  , Integer <$> Gen.integral (Range.linear (-100_000_000_000) (100_000_000_000))
+  , Integer <$> Gen.integral (Range.linear (-100_000_000_000) 100_000_000_000)
   , ByteString <$> Gen.bytes (Range.linear 0 1000)
   , Text <$> genText
   , pure (Bool True)
@@ -69,14 +69,14 @@ genWhitespace = Gen.choice
 
 genSingleLineComment :: Gen Text
 genSingleLineComment =
-  ((<> "\n") . ("--" <>)) <$>
+  (<> "\n") . ("--" <>) <$>
   Gen.text (Range.linear 0 1000)
     (Gen.element [ c | c <- ['\0'..'\xff'], c /= '\r' && c /= '\n' ])
 
 
 genMultiLineComment :: Gen Text
 genMultiLineComment =
-  ((<> "-}") . ("{-" <>)) <$>
+  (<> "-}") . ("{-" <>) <$>
   Gen.text (Range.linear 0 1000)
     (Gen.element [ c | c <- ['\0'..'\xff'], c /= '}' ])
 
