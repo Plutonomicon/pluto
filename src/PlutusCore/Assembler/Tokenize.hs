@@ -17,15 +17,14 @@ module PlutusCore.Assembler.Tokenize
 import           Data.Attoparsec.Text                    (Parser, anyChar, char,
                                                           choice, decimal,
                                                           endOfInput, inClass,
-                                                          many',
-                                                          notInClass, parseOnly,
-                                                          satisfy, signed,
-                                                          string)
+                                                          many', notInClass,
+                                                          parseOnly, satisfy,
+                                                          signed, string)
 import qualified Data.ByteString                         as BS
 import           Data.Either.Combinators                 (mapLeft)
 import           Data.Text                               (cons, pack, replace)
 import           Data.Word                               (Word8)
-import Text.Hex (encodeHex)
+import           Text.Hex                                (encodeHex)
 
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Types.Builtin      (Builtin (..))
@@ -415,20 +414,20 @@ printBuiltin = pack . show
 printInfixBuiltin :: Infix.InfixBuiltin -> Text
 printInfixBuiltin =
   \case
-    Infix.AddInteger -> "+i"
-    Infix.SubtractInteger -> "-i"
-    Infix.MultiplyInteger -> "*i"
-    Infix.DivideInteger -> "/i"
-    Infix.RemainderInteger -> "%i"
-    Infix.EqualsInteger -> "==i"
-    Infix.LessThanInteger -> "<i"
-    Infix.LessThanEqualsInteger -> "<=i"
-    Infix.AppendByteString -> "+b"
-    Infix.ConsByteString -> ":b"
-    Infix.IndexByteString -> "!b"
-    Infix.EqualsByteString -> "==b"
-    Infix.LessThanByteString -> "<b"
+    Infix.AddInteger              -> "+i"
+    Infix.SubtractInteger         -> "-i"
+    Infix.MultiplyInteger         -> "*i"
+    Infix.DivideInteger           -> "/i"
+    Infix.RemainderInteger        -> "%i"
+    Infix.EqualsInteger           -> "==i"
+    Infix.LessThanInteger         -> "<i"
+    Infix.LessThanEqualsInteger   -> "<=i"
+    Infix.AppendByteString        -> "+b"
+    Infix.ConsByteString          -> ":b"
+    Infix.IndexByteString         -> "!b"
+    Infix.EqualsByteString        -> "==b"
+    Infix.LessThanByteString      -> "<b"
     Infix.LessThanEqualByteString -> "<=b"
-    Infix.AppendString -> "+s"
-    Infix.EqualsString -> "==s"
-    Infix.EqualsData -> "==d"
+    Infix.AppendString            -> "+s"
+    Infix.EqualsString            -> "==s"
+    Infix.EqualsData              -> "==d"

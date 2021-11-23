@@ -1,6 +1,6 @@
-{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NoImplicitPrelude  #-}
 {-# LANGUAGE NumericUnderscores #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings  #-}
 
 
 module PlutusCore.Assembler.Spec.TokenizeSpec ( tests ) where
@@ -10,8 +10,8 @@ import qualified Hedgehog.Gen                      as Gen
 import qualified Hedgehog.Range                    as Range
 
 import           PlutusCore.Assembler.Spec.Prelude
-import           PlutusCore.Assembler.Tokenize     (tokenize, printToken)
-import PlutusCore.Assembler.Types.Token (Token (..))
+import           PlutusCore.Assembler.Tokenize     (printToken, tokenize)
+import           PlutusCore.Assembler.Types.Token  (Token (..))
 
 
 genText :: Gen Text
