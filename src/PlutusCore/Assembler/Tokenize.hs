@@ -5,6 +5,10 @@
 
 module PlutusCore.Assembler.Tokenize
   ( tokenize
+  , printToken
+  , printBuiltin
+  , printInfixBuiltin
+  , escapeText
   , Token (..)
   , ErrorMessage (..)
   ) where
@@ -13,14 +17,15 @@ module PlutusCore.Assembler.Tokenize
 import           Data.Attoparsec.Text                    (Parser, anyChar, char,
                                                           choice, decimal,
                                                           endOfInput, inClass,
-                                                          many', many1,
+                                                          many',
                                                           notInClass, parseOnly,
                                                           satisfy, signed,
                                                           string)
 import qualified Data.ByteString                         as BS
 import           Data.Either.Combinators                 (mapLeft)
-import           Data.Text                               (cons, pack)
+import           Data.Text                               (cons, pack, replace)
 import           Data.Word                               (Word8)
+import Text.Hex (encodeHex)
 
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Types.Builtin      (Builtin (..))
@@ -71,13 +76,13 @@ token =
   choice
   [ lambda
   , arrow
-  , forceKeyword
-  , delayKeyword
+  , force
+  , delay
   , openParen
   , closeParen
   , errorKeyword
-  , integerLiteral
   , byteStringLiteral
+  , integerLiteral
   , textLiteral
   , boolLiteral
   , openBracket
@@ -116,12 +121,12 @@ arrow :: Parser Token
 arrow = Arrow <$ string "->"
 
 
-forceKeyword :: Parser Token
-forceKeyword = Force <$ string "force"
+force :: Parser Token
+force = Force <$ char '!'
 
 
-delayKeyword :: Parser Token
-delayKeyword = Delay <$ string "delay"
+delay :: Parser Token
+delay = Delay <$ char '#'
 
 
 openParen :: Parser Token
@@ -133,7 +138,7 @@ closeParen = CloseParen <$ char ')'
 
 
 errorKeyword :: Parser Token
-errorKeyword = Error <$ string "error"
+errorKeyword = Error <$ string "Error"
 
 
 integerLiteral :: Parser Token
@@ -147,7 +152,7 @@ byteStringLiteral = hexadecimalByteStringLiteral
 hexadecimalByteStringLiteral :: Parser Token
 hexadecimalByteStringLiteral = do
   void $ string "0x"
-  ByteString . BS.pack <$> many1 hexByteLiteral
+  ByteString . BS.pack <$> many' hexByteLiteral
 
 
 hexByteLiteral :: Parser Word8
@@ -223,7 +228,7 @@ textLiteral = do
 
 
 boolLiteral :: Parser Token
-boolLiteral = (Bool True <$ string "true") <|> (Bool False <$ string "false")
+boolLiteral = (Bool True <$ string "True") <|> (Bool False <$ string "False")
 
 
 openBracket :: Parser Token
@@ -357,3 +362,73 @@ thenKeyword = Then <$ string "then"
 
 elseKeyword :: Parser Token
 elseKeyword = Else <$ string "else"
+
+
+-- Maps a token to its unique syntactic form.
+printToken :: Token -> Text
+printToken =
+  \case
+    Var x          -> x
+    Lambda         -> "\\"
+    Arrow          -> "->"
+    Force          -> "!"
+    Delay          -> "#"
+    OpenParen      -> "("
+    CloseParen     -> ")"
+    Error          -> "Error"
+    Integer i      -> pack (show i)
+    ByteString b   -> "0x" <> encodeHex b
+    Text t         -> "\"" <> escapeText t <> "\""
+    Bool True      -> "True"
+    Bool False     -> "False"
+    OpenBracket    -> "["
+    CloseBracket   -> "]"
+    Comma          -> ","
+    OpenBrace      -> "{"
+    CloseBrace     -> "}"
+    Data           -> "data"
+    Sigma          -> "sigma"
+    Equals         -> "="
+    Builtin b      -> printBuiltin b
+    InfixBuiltin b -> printInfixBuiltin b
+    Let            -> "let"
+    Semicolon      -> ";"
+    In             -> "in"
+    If             -> "if"
+    Then           -> "then"
+    Else           -> "else"
+
+
+escapeText :: Text -> Text
+escapeText =
+    replace "\"" "\\\""
+  . replace "\\" "\\\\"
+  . replace "\r" "\\r"
+  . replace "\n" "\\n"
+  . replace "\t" "\\t"
+
+
+printBuiltin :: Builtin -> Text
+printBuiltin = pack . show
+
+
+printInfixBuiltin :: Infix.InfixBuiltin -> Text
+printInfixBuiltin =
+  \case
+    Infix.AddInteger -> "+i"
+    Infix.SubtractInteger -> "-i"
+    Infix.MultiplyInteger -> "*i"
+    Infix.DivideInteger -> "/i"
+    Infix.RemainderInteger -> "%i"
+    Infix.EqualsInteger -> "==i"
+    Infix.LessThanInteger -> "<i"
+    Infix.LessThanEqualsInteger -> "<=i"
+    Infix.AppendByteString -> "+b"
+    Infix.ConsByteString -> ":b"
+    Infix.IndexByteString -> "!b"
+    Infix.EqualsByteString -> "==b"
+    Infix.LessThanByteString -> "<b"
+    Infix.LessThanEqualByteString -> "<=b"
+    Infix.AppendString -> "+s"
+    Infix.EqualsString -> "==s"
+    Infix.EqualsData -> "==d"

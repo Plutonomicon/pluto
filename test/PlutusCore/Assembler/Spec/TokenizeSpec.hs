@@ -1,21 +1,62 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 
 module PlutusCore.Assembler.Spec.TokenizeSpec ( tests ) where
 
 
-import           Control.Applicative               (liftA2)
-import           Data.Either.Extra                 (eitherToMaybe)
 import qualified Hedgehog.Gen                      as Gen
 import qualified Hedgehog.Range                    as Range
 
 import           PlutusCore.Assembler.Spec.Prelude
-import           PlutusCore.Assembler.Tokenize     (tokenize)
+import           PlutusCore.Assembler.Tokenize     (tokenize, printToken)
+import PlutusCore.Assembler.Types.Token (Token (..))
 
 
 genText :: Gen Text
 genText = Gen.text (Range.linear 0 1000) Gen.ascii
+
+
+genToken :: Gen Token
+genToken =
+  Gen.choice
+  [ Var <$> genName
+  , pure Lambda
+  , pure Arrow
+  , pure Force
+  , pure Delay
+  , pure OpenParen
+  , pure CloseParen
+  , pure Error
+  , Integer <$> Gen.integral (Range.linear (-100_000_000_000) (100_000_000_000))
+  , ByteString <$> Gen.bytes (Range.linear 0 1000)
+  , Text <$> genText
+  , pure (Bool True)
+  , pure (Bool False)
+  , pure OpenBracket
+  , pure CloseBracket
+  , pure Comma
+  , pure OpenBrace
+  , pure CloseBrace
+  , pure Data
+  , pure Sigma
+  , pure Equals
+  , Builtin <$> Gen.enumBounded
+  , InfixBuiltin <$> Gen.enumBounded
+  , pure Let
+  , pure Semicolon
+  , pure In
+  , pure If
+  , pure Then
+  , pure Else
+  ]
+
+
+genName :: Gen Text
+genName = (<>) <$> Gen.text (Range.singleton 1) (Gen.element ['a'..'z'])
+               <*> Gen.text (Range.linear 0 100)
+                     (Gen.element (['a'..'z']<>['A'..'Z']<>['0'..'9']<>['_']))
 
 
 genWhitespace :: Gen Text
@@ -46,6 +87,7 @@ tests =
   [ commutesWithConcatByWhitespaceTest
   , prependWhitespaceTest
   , appendWhitespaceTest
+  , tokenTest
   ]
 
 
@@ -74,3 +116,10 @@ appendWhitespaceTest =
     t <- forAll genText
     w <- forAll genWhitespace
     eitherToMaybe (tokenize t) === eitherToMaybe (tokenize (w <> t))
+
+
+tokenTest :: TestTree
+tokenTest =
+  testProperty "tokenizes a single token" . property $ do
+    t <- forAll genToken
+    tokenize (printToken t) === Right [t]

@@ -13,7 +13,6 @@ data InfixBuiltin =
   | MultiplyInteger
   | DivideInteger
   | RemainderInteger
-  | ModInteger
   | EqualsInteger
   | LessThanInteger
   | LessThanEqualsInteger
@@ -26,4 +25,4 @@ data InfixBuiltin =
   | AppendString
   | EqualsString
   | EqualsData
-  deriving (Eq, Show)
+  deriving (Eq, Show, Bounded, Enum)
