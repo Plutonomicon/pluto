@@ -4,6 +4,9 @@
 module PlutusCore.Assembler.Types.Builtin (Builtin (..)) where
 
 
+import PlutusCore.Assembler.Prelude
+
+
 data Builtin =
     AddInteger
   | SubtractInteger
@@ -54,3 +57,4 @@ data Builtin =
   | MkPairData
   | MkNilData
   | MkNilPairData
+  deriving Show

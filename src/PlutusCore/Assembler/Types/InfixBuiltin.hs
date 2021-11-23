@@ -4,6 +4,9 @@
 module PlutusCore.Assembler.Types.InfixBuiltin (InfixBuiltin (..)) where
 
 
+import PlutusCore.Assembler.Prelude
+
+
 data InfixBuiltin =
     AddInteger 
   | SubtractInteger
@@ -23,3 +26,4 @@ data InfixBuiltin =
   | AppendString
   | EqualsString
   | EqualsData
+  deriving Show
