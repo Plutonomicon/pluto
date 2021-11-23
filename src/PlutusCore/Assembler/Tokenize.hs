@@ -14,12 +14,13 @@ module PlutusCore.Assembler.Tokenize
   ) where
 
 
-import           Data.Attoparsec.Text                    (Parser, anyChar, char, peekChar,
+import           Data.Attoparsec.Text                    (Parser, anyChar, char,
                                                           choice, decimal,
                                                           endOfInput, inClass,
                                                           many', notInClass,
-                                                          parseOnly, satisfy,
-                                                          signed, string)
+                                                          parseOnly, peekChar,
+                                                          satisfy, signed,
+                                                          string)
 import qualified Data.ByteString                         as BS
 import           Data.Either.Combinators                 (mapLeft)
 import           Data.Text                               (cons, pack, replace)

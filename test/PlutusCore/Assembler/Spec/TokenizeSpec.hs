@@ -59,13 +59,13 @@ genName = do
               <*> Gen.text (Range.linear 0 100)
                     (Gen.element (['a'..'z']<>['A'..'Z']<>['0'..'9']<>['_']))
   return $ case nm of
-    "if" -> "iff"
-    "then" -> "thenn"
-    "else" -> "elsee"
-    "in" -> "inn"
-    "data" -> "dataa"
+    "if"    -> "iff"
+    "then"  -> "thenn"
+    "else"  -> "elsee"
+    "in"    -> "inn"
+    "data"  -> "dataa"
     "sigma" -> "sigmaa"
-    x -> x
+    x       -> x
 
 
 genWhitespace :: Gen Text
