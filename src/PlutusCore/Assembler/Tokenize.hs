@@ -14,7 +14,7 @@ module PlutusCore.Assembler.Tokenize
   ) where
 
 
-import           Data.Attoparsec.Text                    (Parser, anyChar, char,
+import           Data.Attoparsec.Text                    (Parser, anyChar, char, peekChar,
                                                           choice, decimal,
                                                           endOfInput, inClass,
                                                           many', notInClass,
@@ -343,7 +343,7 @@ infixBuiltin =
 
 
 letKeyword :: Parser Token
-letKeyword = Let <$ string "let"
+letKeyword = Let <$ peekNonName (string "let")
 
 
 semicolon :: Parser Token
@@ -351,19 +351,33 @@ semicolon = Semicolon <$ char ';'
 
 
 inKeyword :: Parser Token
-inKeyword = In <$ string "in"
+inKeyword = In <$ peekNonName (string "in")
 
 
 ifKeyword :: Parser Token
-ifKeyword = If <$ string "if"
+ifKeyword = If <$ peekNonName (string "if")
 
 
 thenKeyword :: Parser Token
-thenKeyword = Then <$ string "then"
+thenKeyword = Then <$ peekNonName (string "then")
 
 
 elseKeyword :: Parser Token
-elseKeyword = Else <$ string "else"
+elseKeyword = Else <$ peekNonName (string "else")
+
+
+-- This parser consumes no input but resolves parsing ambiguity by not accepting the parse
+-- if the thing we are parsing could be a variable name.
+peekNonName :: Parser a -> Parser a
+peekNonName p = do
+  x  <- p
+  mc <- peekChar
+  case mc of
+    Nothing -> return x
+    Just c ->
+      if ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9') || c == '_'
+      then mzero
+      else return x
 
 
 -- Maps a token to its unique syntactic form.

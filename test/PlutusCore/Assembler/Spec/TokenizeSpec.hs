@@ -54,9 +54,18 @@ genToken =
 
 
 genName :: Gen Text
-genName = (<>) <$> Gen.text (Range.singleton 1) (Gen.element ['a'..'z'])
-               <*> Gen.text (Range.linear 0 100)
-                     (Gen.element (['a'..'z']<>['A'..'Z']<>['0'..'9']<>['_']))
+genName = do
+  nm <- (<>) <$> Gen.text (Range.singleton 1) (Gen.element ['a'..'z'])
+              <*> Gen.text (Range.linear 0 100)
+                    (Gen.element (['a'..'z']<>['A'..'Z']<>['0'..'9']<>['_']))
+  return $ case nm of
+    "if" -> "iff"
+    "then" -> "thenn"
+    "else" -> "elsee"
+    "in" -> "inn"
+    "data" -> "dataa"
+    "sigma" -> "sigmaa"
+    x -> x
 
 
 genWhitespace :: Gen Text
