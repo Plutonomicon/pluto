@@ -102,12 +102,13 @@ tests =
 
 commutesWithConcatByWhitespaceTest :: TestTree
 commutesWithConcatByWhitespaceTest =
-  testProperty "commutes with concatenating strings separated by whitespace" . property $ do
+  testProperty "commutes with concatenating strings separated by whitespace in case of a successful parse" . property $ do
     t0 <- forAll genText
     t1 <- forAll genText
     w  <- forAll genWhitespace
-    liftA2 (<>) (f t0) (f t1) === f (t0 <> w <> t1)
-    return ()
+    case (liftA2 (<>) (f t0) (f t1), f (t0 <> w <> t1)) of
+      (Just x, Just y) -> x === y
+      _ -> return ()
   where f = eitherToMaybe . tokenize
 
 
