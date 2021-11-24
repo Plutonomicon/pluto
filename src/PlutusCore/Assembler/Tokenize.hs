@@ -15,8 +15,8 @@ module PlutusCore.Assembler.Tokenize
 
 
 import Text.Parsec.Text (Parser)
-import Text.Parsec.Prim (parse, many, lookAhead, try)
-import Text.Parsec (eof, many1, choice)
+import Text.Parsec.Prim (parse, many, lookAhead, try, getPosition)
+import Text.Parsec (eof, many1, choice, SourcePos)
 import Text.Parsec.Char (oneOf, string, noneOf, anyChar, char)
 import qualified Data.ByteString                         as BS
 import           Data.Either.Combinators                 (mapLeft)
@@ -34,17 +34,18 @@ import PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
 -- TODO: convert to Parsec and output [(Token, SourcePos)]
 
 
-tokenize :: Text -> Either ErrorMessage [Token]
+tokenize :: Text -> Either ErrorMessage [(Token, SourcePos)]
 tokenize = mapLeft (ErrorMessage . pack . show) . parse tokens "input"
 
 
-tokens :: Parser [Token]
+tokens :: Parser [(Token, SourcePos)]
 tokens = do
   void (many whitespace)
   ts <- many $ do
          t <- token
+         p <- getPosition
          void (many whitespace)
-         return t
+         return (t, p)
   eof
   return ts
 

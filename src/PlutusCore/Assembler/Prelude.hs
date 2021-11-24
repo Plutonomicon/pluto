@@ -8,6 +8,7 @@ module PlutusCore.Assembler.Prelude
   , module Data.Either.Extra
   , module Data.Text
   , module Prelude
+  , (<$$>)
   ) where
 
 
@@ -22,3 +23,7 @@ import           Prelude             (Bool (False, True), Bounded, Char,
                                       Monad (return, (>>=)), Num ((*), (+)),
                                       Show (show), String, ($), (&&), (.), (/=),
                                       (<$), (<$>), (<=), (<>), (==), (>>), (||), foldl, fst, snd)
+
+
+(<$$>) :: ( Functor f, Functor g ) => (a -> b) -> f (g a) -> f (g b)
+f <$$> x = fmap (fmap f) x
