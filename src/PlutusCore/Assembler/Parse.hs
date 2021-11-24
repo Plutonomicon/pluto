@@ -14,7 +14,7 @@ import qualified PlutusCore.Data as Data
 
 import PlutusCore.Assembler.Prelude
 import PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
-import PlutusCore.Assembler.Types.AST (Program, Term, Constant, Data)
+import PlutusCore.Assembler.Types.AST (Program, Term, Constant, Data, Binding)
 import qualified PlutusCore.Assembler.Types.AST as AST
 import PlutusCore.Assembler.Types.Token (Token)
 import qualified PlutusCore.Assembler.Types.Token as Tok
@@ -94,23 +94,36 @@ term2 = ifTerm <|> letTerm <|> term3
 
 
 ifTerm :: Parser Term
-ifTerm = todo
+ifTerm = do
+  consumeExact Tok.If ()
+  i <- AST.IfTerm <$> term3
+  consumeExact Tok.Then ()
+  t <- AST.ThenTerm <$> term3
+  consumeExact Tok.Else ()
+  e <- AST.ElseTerm <$> term3
+  return (AST.IfThenElse i t e)
 
 
 letTerm :: Parser Term
-letTerm = todo
+letTerm = do
+  consumeExact Tok.Let ()
+  b0 <- letBinding
+  bs <- many (consumeExact Tok.Semicolon () >> letBinding)
+  consumeExact Tok.In ()
+  t  <- term
+  return (AST.Let (b0:bs) t)
+
+
+letBinding :: Parser Binding
+letBinding = do
+  x <- AST.Name <$> consumeVar
+  consumeExact Tok.Equals ()
+  t <- term
+  return (AST.Binding x t)
 
 
 term3 :: Parser Term
-term3 = forceTerm <|> delayTerm <|> try infixApplyTerm <|> term4
-
-
-forceTerm :: Parser Term
-forceTerm = todo
-
-
-delayTerm :: Parser Term
-delayTerm = todo
+term3 = try infixApplyTerm <|> term4
 
 
 infixApplyTerm :: Parser Term
@@ -118,7 +131,19 @@ infixApplyTerm = todo
 
 
 term4 :: Parser Term
-term4 = builtinTerm <|> errorTerm <|> parenthesizedTerm <|> constantTerm
+term4 = forceTerm <|> delayTerm <|> term5
+
+
+forceTerm :: Parser Term
+forceTerm = consumeExact Tok.Force () >> (AST.Force <$> term4)
+
+
+delayTerm :: Parser Term
+delayTerm = consumeExact Tok.Delay () >> (AST.Delay <$> term4)
+
+
+term5 :: Parser Term
+term5 = builtinTerm <|> errorTerm <|> parenthesizedTerm <|> constantTerm
 
 
 constantTerm :: Parser Term
