@@ -14,21 +14,25 @@ module PlutusCore.Assembler.Tokenize
   ) where
 
 
-import Text.Parsec.Text (Parser)
-import Text.Parsec.Prim (parse, many, lookAhead, try, getPosition)
-import Text.Parsec (eof, many1, choice, SourcePos)
-import Text.Parsec.Char (oneOf, string, noneOf, anyChar, char)
 import qualified Data.ByteString                         as BS
 import           Data.Either.Combinators                 (mapLeft)
 import           Data.Text                               (cons, pack, replace)
 import           Data.Word                               (Word8)
 import           Text.Hex                                (encodeHex)
+import           Text.Parsec                             (SourcePos, choice,
+                                                          eof, many1)
+import           Text.Parsec.Char                        (anyChar, char, noneOf,
+                                                          oneOf, string)
+import           Text.Parsec.Prim                        (getPosition,
+                                                          lookAhead, many,
+                                                          parse, try)
+import           Text.Parsec.Text                        (Parser)
 
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Types.Builtin      (Builtin (..))
+import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
 import qualified PlutusCore.Assembler.Types.InfixBuiltin as Infix
 import           PlutusCore.Assembler.Types.Token        (Token (..))
-import PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
 
 
 -- TODO: convert to Parsec and output [(Token, SourcePos)]

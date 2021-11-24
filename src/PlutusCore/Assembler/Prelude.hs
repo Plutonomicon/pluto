@@ -13,16 +13,18 @@ module PlutusCore.Assembler.Prelude
 
 
 import           Control.Applicative (Applicative (pure), liftA2, (<*>), (<|>))
-import           Control.Monad       (mzero, void, guard)
+import           Control.Monad       (guard, mzero, void)
 import           Data.ByteString     (ByteString)
 import           Data.Either.Extra   (eitherToMaybe)
 import           Data.Text           (Text)
 import           Prelude             (Bool (False, True), Bounded, Char,
-                                      Either (Left, Right), Enum, Eq, IO,
-                                      Integer, Maybe (Just, Nothing), Functor (fmap), negate,
+                                      Either (Left, Right), Enum, Eq,
+                                      Functor (fmap), IO, Integer,
+                                      Maybe (Just, Nothing),
                                       Monad (return, (>>=)), Num ((*), (+)),
-                                      Show (show), String, ($), (&&), (.), (/=),
-                                      (<$), (<$>), (<=), (<>), (==), (>>), (||), foldl, fst, snd)
+                                      Show (show), String, foldl, fst, negate,
+                                      snd, ($), (&&), (.), (/=), (<$), (<$>),
+                                      (<=), (<>), (==), (>>), (||))
 
 
 (<$$>) :: ( Functor f, Functor g ) => (a -> b) -> f (g a) -> f (g b)

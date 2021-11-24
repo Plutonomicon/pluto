@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 
@@ -36,20 +36,20 @@ data InfixBuiltin =
 toBuiltin :: InfixBuiltin -> B.Builtin
 toBuiltin =
   \case
-    AddInteger -> B.AddInteger
-    SubtractInteger -> B.SubtractInteger
-    MultiplyInteger -> B.MultiplyInteger
-    DivideInteger -> B.DivideInteger
-    RemainderInteger -> B.RemainderInteger
-    EqualsInteger -> B.EqualsInteger
-    LessThanInteger -> B.LessThanInteger
-    LessThanEqualsInteger -> B.LessThanEqualsInteger
-    AppendByteString -> B.AppendByteString
-    ConsByteString -> B.ConsByteString
-    IndexByteString -> B.IndexByteString
-    EqualsByteString -> B.EqualsByteString
-    LessThanByteString -> B.LessThanByteString
+    AddInteger              -> B.AddInteger
+    SubtractInteger         -> B.SubtractInteger
+    MultiplyInteger         -> B.MultiplyInteger
+    DivideInteger           -> B.DivideInteger
+    RemainderInteger        -> B.RemainderInteger
+    EqualsInteger           -> B.EqualsInteger
+    LessThanInteger         -> B.LessThanInteger
+    LessThanEqualsInteger   -> B.LessThanEqualsInteger
+    AppendByteString        -> B.AppendByteString
+    ConsByteString          -> B.ConsByteString
+    IndexByteString         -> B.IndexByteString
+    EqualsByteString        -> B.EqualsByteString
+    LessThanByteString      -> B.LessThanByteString
     LessThanEqualByteString -> B.LessThanEqualByteString
-    AppendString -> B.AppendString
-    EqualsString -> B.EqualsString
-    EqualsData -> B.EqualsData
+    AppendString            -> B.AppendString
+    EqualsString            -> B.EqualsString
+    EqualsData              -> B.EqualsData

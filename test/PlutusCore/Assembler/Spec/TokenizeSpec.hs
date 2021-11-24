@@ -109,7 +109,7 @@ commutesWithConcatByWhitespaceTest =
     w  <- forAll genWhitespace
     case (liftA2 (<>) (f t0) (f t1), f (t0 <> w <> t1)) of
       (Just x, Just y) -> x === y
-      _ -> return ()
+      _                -> return ()
   where f = fmap (fmap fst) . eitherToMaybe . tokenize
 
 

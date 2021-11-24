@@ -21,7 +21,7 @@ module PlutusCore.Assembler.Types.AST
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Types.Builtin  (Builtin)
 import           PlutusCore.Assembler.Types.Constant (Constant (..))
-import PlutusCore.Data (Data)
+import           PlutusCore.Data                     (Data)
 
 
 newtype Program = Program { unProgram :: Term }

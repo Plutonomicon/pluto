@@ -1,25 +1,27 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 
 module PlutusCore.Assembler.Parse ( parse ) where
 
 
-import Data.Either.Extra (mapLeft)
-import Data.Text (pack, unpack)
-import Text.Parsec (Parsec, SourcePos, try, option, many)
-import Text.Parsec.Prim (token)
-import qualified Text.Parsec.Prim as Prim
-import qualified PlutusCore.Data as Data
+import           Data.Either.Extra                       (mapLeft)
+import           Data.Text                               (pack, unpack)
+import qualified PlutusCore.Data                         as Data
+import           Text.Parsec                             (Parsec, SourcePos,
+                                                          many, option, try)
+import           Text.Parsec.Prim                        (token)
+import qualified Text.Parsec.Prim                        as Prim
 
-import PlutusCore.Assembler.Prelude
-import PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
-import PlutusCore.Assembler.Types.AST (Program, Term, Constant, Data, Binding)
-import qualified PlutusCore.Assembler.Types.AST as AST
-import PlutusCore.Assembler.Types.Token (Token)
-import qualified PlutusCore.Assembler.Types.Token as Tok
+import           PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Tokenize           (printToken)
+import           PlutusCore.Assembler.Types.AST          (Binding, Constant,
+                                                          Data, Program, Term)
+import qualified PlutusCore.Assembler.Types.AST          as AST
+import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
 import qualified PlutusCore.Assembler.Types.InfixBuiltin as InfixBuiltin
-import PlutusCore.Assembler.Tokenize (printToken)
+import           PlutusCore.Assembler.Types.Token        (Token)
+import qualified PlutusCore.Assembler.Types.Token        as Tok
 
 
 type Parser = Parsec [(Token, SourcePos)] ()
@@ -43,7 +45,7 @@ consumeInteger =
   consume $
     \case
       (Tok.Integer i, _) -> pure i
-      _ -> mzero
+      _                  -> mzero
 
 
 consumeByteString :: Parser ByteString
@@ -51,7 +53,7 @@ consumeByteString =
   consume $
     \case
       (Tok.ByteString b, _) -> pure b
-      _ -> mzero
+      _                     -> mzero
 
 
 consumeVar :: Parser Text
@@ -59,7 +61,7 @@ consumeVar =
   consume $
     \case
       (Tok.Var x, _) -> pure x
-      _ -> mzero
+      _              -> mzero
 
 
 program :: Parser Program
@@ -144,7 +146,7 @@ infixBuiltin =
   consume $
     \case
       (Tok.InfixBuiltin b, _) -> pure (AST.Builtin (InfixBuiltin.toBuiltin b))
-      _ -> mzero
+      _                       -> mzero
 
 
 backtickInfix :: Parser Term
@@ -214,7 +216,7 @@ text =
   consume $
     \case
       (Tok.Text t, _) -> pure (AST.T t)
-      _ -> mzero
+      _               -> mzero
 
 
 bracketList :: Parser a -> Parser [a]
@@ -293,7 +295,7 @@ builtinTerm =
   consume $
     \case
       (Tok.Builtin b, _) -> pure (AST.Builtin b)
-      _ -> mzero
+      _                  -> mzero
 
 
 errorTerm :: Parser Term
