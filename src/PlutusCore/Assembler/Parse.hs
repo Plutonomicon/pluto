@@ -53,6 +53,13 @@ consumeByteString =
       _ -> mzero
 
 
+consumeVar :: Parser Text
+consumeVar =
+  consume $
+    \case
+      (Tok.Var x, _) -> pure x
+      _ -> mzero
+
 
 program :: Parser Program
 program = AST.Program <$> term
@@ -63,11 +70,16 @@ term = term0
 
 
 term0 :: Parser Term
-term0 = try lambdaTerm <|> term1
+term0 = lambdaTerm <|> term1
 
 
 lambdaTerm :: Parser Term
-lambdaTerm = todo
+lambdaTerm = do
+  consumeExact Tok.Lambda ()
+  x <- consumeVar
+  consumeExact Tok.Arrow ()
+  t <- term
+  return (AST.Lambda (AST.Binding (AST.Name x) t))
 
 
 term1 :: Parser Term
