@@ -97,6 +97,7 @@ token =
   , closeBracket
   , comma
   , period
+  , backtick
   , openBrace
   , closeBrace
   , dataKeyword
@@ -286,6 +287,10 @@ period :: Parser Token
 period = Period <$ char '.'
 
 
+backtick :: Parser Token
+backtick = Backtick <$ char '`'
+
+
 openBrace :: Parser Token
 openBrace = OpenBrace <$ char '{'
 
@@ -457,6 +462,7 @@ printToken =
     CloseBracket   -> "]"
     Comma          -> ","
     Period         -> "."
+    Backtick       -> "`"
     OpenBrace      -> "{"
     CloseBrace     -> "}"
     Data           -> "data"

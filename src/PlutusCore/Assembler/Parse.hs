@@ -18,6 +18,7 @@ import PlutusCore.Assembler.Types.AST (Program, Term, Constant, Data, Binding)
 import qualified PlutusCore.Assembler.Types.AST as AST
 import PlutusCore.Assembler.Types.Token (Token)
 import qualified PlutusCore.Assembler.Types.Token as Tok
+import qualified PlutusCore.Assembler.Types.InfixBuiltin as InfixBuiltin
 import PlutusCore.Assembler.Tokenize (printToken)
 
 
@@ -127,7 +128,31 @@ term3 = try infixApplyTerm <|> term4
 
 
 infixApplyTerm :: Parser Term
-infixApplyTerm = todo
+infixApplyTerm = do
+  t0 <- AST.LeftTerm  <$> term4
+  op <- AST.OpTerm    <$> infixOperator
+  t1 <- AST.RightTerm <$> term4
+  return (AST.InfixApply t0 op t1)
+
+
+infixOperator :: Parser Term
+infixOperator = infixBuiltin <|> backtickInfix
+
+
+infixBuiltin :: Parser Term
+infixBuiltin =
+  consume $
+    \case
+      (Tok.InfixBuiltin b, _) -> pure (AST.Builtin (InfixBuiltin.toBuiltin b))
+      _ -> mzero
+
+
+backtickInfix :: Parser Term
+backtickInfix = do
+  consumeExact Tok.Backtick ()
+  t <- varTerm <|> builtinTerm
+  consumeExact Tok.Backtick ()
+  return t
 
 
 term4 :: Parser Term
@@ -143,7 +168,11 @@ delayTerm = consumeExact Tok.Delay () >> (AST.Delay <$> term4)
 
 
 term5 :: Parser Term
-term5 = builtinTerm <|> errorTerm <|> parenthesizedTerm <|> constantTerm
+term5 = varTerm <|> builtinTerm <|> errorTerm <|> parenthesizedTerm <|> constantTerm
+
+
+varTerm :: Parser Term
+varTerm = AST.Var . AST.Name <$> consumeVar
 
 
 constantTerm :: Parser Term
@@ -277,7 +306,3 @@ parenthesizedTerm = do
   t <- term
   consumeExact Tok.CloseParen ()
   return t
-
-
-todo :: a
-todo = todo
