@@ -29,7 +29,7 @@ Data ::= 'data' DataConstant
 
 DataConstant ::= DataConstr | DataMap | DataList | Integer | ByteString
 
-DataConstr ::= 'sigma' NonNegativeInteger DataConstant
+DataConstr ::= 'sigma' NonNegativeInteger '.' '[' (DataConstant ( , DataConstant)*)? ']'
 
 DataMap ::= '{' (DataMapEntry (',' DataMapEntry)*)? '}'
 

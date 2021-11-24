@@ -37,6 +37,7 @@ genToken =
   , pure OpenBracket
   , pure CloseBracket
   , pure Comma
+  , pure Period
   , pure OpenBrace
   , pure CloseBrace
   , pure Data
