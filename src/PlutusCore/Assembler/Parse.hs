@@ -223,7 +223,11 @@ byteStringData = Data.B <$> consumeByteString
 
 
 builtinTerm :: Parser Term
-builtinTerm = todo
+builtinTerm =
+  consume $
+    \case
+      (Tok.Builtin b, _) -> pure (AST.Builtin b)
+      _ -> mzero
 
 
 errorTerm :: Parser Term
