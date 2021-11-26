@@ -19,3 +19,4 @@ data Constant =
   | L [Constant]
   | P (Constant, Constant)
   | D Data
+  deriving (Eq, Show)
