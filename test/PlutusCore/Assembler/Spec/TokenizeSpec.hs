@@ -1,94 +1,13 @@
 {-# LANGUAGE NoImplicitPrelude  #-}
-{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings  #-}
 
 
 module PlutusCore.Assembler.Spec.TokenizeSpec ( tests ) where
 
 
-import qualified Hedgehog.Gen                      as Gen
-import qualified Hedgehog.Range                    as Range
-
 import           PlutusCore.Assembler.Spec.Prelude
 import           PlutusCore.Assembler.Tokenize     (printToken, tokenize)
-import           PlutusCore.Assembler.Types.Token  (Token (..))
-
-
-genText :: Gen Text
-genText = Gen.text (Range.linear 0 1000) Gen.ascii
-
-
-genToken :: Gen Token
-genToken =
-  Gen.choice
-  [ Var <$> genName
-  , pure Lambda
-  , pure Arrow
-  , pure Force
-  , pure Delay
-  , pure OpenParen
-  , pure CloseParen
-  , pure Error
-  , Integer <$> Gen.integral (Range.linear (-100_000_000_000) 100_000_000_000)
-  , ByteString <$> Gen.bytes (Range.linear 0 1000)
-  , Text <$> genText
-  , pure (Bool True)
-  , pure (Bool False)
-  , pure OpenBracket
-  , pure CloseBracket
-  , pure Comma
-  , pure Period
-  , pure OpenBrace
-  , pure CloseBrace
-  , pure Data
-  , pure Sigma
-  , pure Equals
-  , Builtin <$> Gen.enumBounded
-  , InfixBuiltin <$> Gen.enumBounded
-  , pure Let
-  , pure Semicolon
-  , pure In
-  , pure If
-  , pure Then
-  , pure Else
-  ]
-
-
-genName :: Gen Text
-genName = do
-  nm <- (<>) <$> Gen.text (Range.singleton 1) (Gen.element ['a'..'z'])
-              <*> Gen.text (Range.linear 0 100)
-                    (Gen.element (['a'..'z']<>['A'..'Z']<>['0'..'9']<>['_']))
-  return $ case nm of
-    "if"    -> "iff"
-    "then"  -> "thenn"
-    "else"  -> "elsee"
-    "in"    -> "inn"
-    "data"  -> "dataa"
-    "sigma" -> "sigmaa"
-    x       -> x
-
-
-genWhitespace :: Gen Text
-genWhitespace = Gen.choice
-  [ Gen.text (Range.singleton 1) (Gen.element [' ', '\r', '\n'])
-  , genSingleLineComment
-  , genMultiLineComment
-  ]
-
-
-genSingleLineComment :: Gen Text
-genSingleLineComment =
-  (<> "\n") . ("--" <>) <$>
-  Gen.text (Range.linear 0 1000)
-    (Gen.element [ c | c <- ['\0'..'\xff'], c /= '\r' && c /= '\n' ])
-
-
-genMultiLineComment :: Gen Text
-genMultiLineComment =
-  (<> "-}") . ("{-" <>) <$>
-  Gen.text (Range.linear 0 1000)
-    (Gen.element [ c | c <- ['\0'..'\xff'], c /= '}' ])
+import PlutusCore.Assembler.Spec.Gen (genText, genToken, genWhitespace)
 
 
 tests :: TestTree
