@@ -181,7 +181,7 @@ genTerm = genTerm0
 
 
 genTerm0 :: Gen (Term, [Token])
-genTerm0 = genLambda <|> genTerm1
+genTerm0 = Gen.choice [genLambda, genTerm1]
 
 
 genLambda :: Gen (Term, [Token])
@@ -202,7 +202,7 @@ genTerm1 = do
 
 
 genTerm2 :: Gen (Term, [Token])
-genTerm2 = genIfTerm <|> genLetTerm <|> genTerm3
+genTerm2 = Gen.choice [genIfTerm, genLetTerm, genTerm3]
 
 
 genIfTerm :: Gen (Term, [Token])
@@ -237,11 +237,16 @@ genLetBinding = do
 
 
 genTerm3 :: Gen (Term, [Token])
-genTerm3 = genInfixApply <|> genTerm4
+genTerm3 = Gen.choice [genInfixApply, genTerm4]
 
 
 genInfixApply :: Gen (Term, [Token])
-genInfixApply = genBuiltinInfixOpApply <|> genBuiltinBacktickInfixApply <|> genVarInfixApply
+genInfixApply =
+  Gen.choice
+  [ genBuiltinInfixOpApply
+  , genBuiltinBacktickInfixApply
+  , genVarInfixApply
+  ]
 
 
 genBuiltinInfixOpApply :: Gen (Term, [Token])
@@ -281,7 +286,12 @@ genVarInfixApply = do
 
 
 genTerm4 :: Gen (Term, [Token])
-genTerm4 = genForce <|> genDelay <|> genTerm5
+genTerm4 =
+  Gen.choice
+  [ genForce
+  , genDelay
+  , genTerm5
+  ]
 
 
 genForce :: Gen (Term, [Token])
@@ -297,7 +307,14 @@ genDelay = do
 
 
 genTerm5 :: Gen (Term, [Token])
-genTerm5 = genVarTerm <|> genBuiltinTerm <|> genErrorTerm <|> genParenthesizedTerm <|> genConstantTerm
+genTerm5 =
+  Gen.choice
+  [ genVarTerm
+  , genBuiltinTerm
+  , genErrorTerm
+  , genParenthesizedTerm
+  , genConstantTerm
+  ]
 
 
 genVarTerm :: Gen (Term, [Token])
