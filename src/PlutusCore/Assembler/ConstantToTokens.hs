@@ -1,0 +1,58 @@
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+
+
+module PlutusCore.Assembler.ConstantToTokens ( constantToTokens ) where
+
+
+import qualified PlutusCore.Data as Data
+import Data.List (intercalate)
+
+import PlutusCore.Assembler.Types.AST (Constant (..), Data)
+import qualified PlutusCore.Assembler.Types.Token as T
+import PlutusCore.Assembler.Prelude
+
+
+-- Every Constant has a unique constant representation as tokens,
+-- which is what this function outputs.
+constantToTokens :: Constant -> [T.Token]
+constantToTokens =
+  \case
+    I x     -> [T.Integer x]
+    S x     -> [T.ByteString x]
+    T x     -> [T.Text x]
+    U       -> [T.OpenParen, T.CloseParen]
+    B x     -> [T.Bool x]
+    L xs    -> [T.OpenBracket]
+            <> intercalate [T.Comma] (constantToTokens <$> xs)
+            <> [T.CloseBracket]
+    P (a,b) -> [T.OpenParen]
+            <> constantToTokens a
+            <> [T.Comma]
+            <> constantToTokens b
+            <> [T.CloseParen]
+    D d     -> [T.Data] <> dataToTokens d
+
+
+dataToTokens :: Data -> [T.Token]
+dataToTokens =
+  \case
+    Data.Constr i xs ->
+      [T.Sigma, T.Integer i, T.Period, T.OpenBracket]
+      <> intercalate [T.Comma] (dataToTokens <$> xs)
+      <> [T.CloseBracket]
+    Data.Map xs ->
+      [T.OpenBrace]
+      <> intercalate [T.Comma] (dataMapEntryToTokens <$> xs)
+      <> [T.CloseBrace]
+    Data.List xs ->
+      [T.OpenBracket]
+      <> intercalate [T.Comma] (dataToTokens <$> xs)
+      <> [T.CloseBracket]
+    Data.I x -> [T.Integer x]
+    Data.B x -> [T.ByteString x]
+
+
+dataMapEntryToTokens :: (Data, Data) -> [T.Token]
+dataMapEntryToTokens (k, v) =
+  dataToTokens k <> [T.Equals] <> dataToTokens v

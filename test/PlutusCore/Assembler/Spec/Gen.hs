@@ -11,9 +11,12 @@ module PlutusCore.Assembler.Spec.Gen
   , genData
   , genConstantAST
   , genTermAST
+  , genTerm
   ) where
 
 
+import Control.Arrow ((***))
+import Data.List (unzip)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 import qualified PlutusCore.Data as Data
@@ -23,6 +26,7 @@ import PlutusCore.Assembler.Types.Token (Token (..))
 import PlutusCore.Assembler.Types.AST (Data, Constant, Term, OpTerm, Binding)
 import qualified PlutusCore.Assembler.Types.Constant as AST
 import qualified PlutusCore.Assembler.Types.AST as AST
+import qualified PlutusCore.Assembler.Types.Token as Tok
 
 
 genText :: Gen Text
@@ -167,3 +171,90 @@ genTermAST =
                    <*> genOpTermAST
                    <*> (AST.RightTerm <$> genTermAST)
   ]
+
+
+-- Generates a syntactically valid token string and the term
+-- it represents.
+genTerm :: Gen (Term, [Token])
+genTerm = genTerm0
+
+
+genTerm0 :: Gen (Term, [Token])
+genTerm0 = genLambda <|> genTerm1
+
+
+genLambda :: Gen (Term, [Token])
+genLambda = do
+  x <- genName
+  (y, ts) <- genTerm
+  return
+    ( AST.Lambda (AST.Binding (AST.Name x) y)
+    , [ Tok.Lambda, Tok.Var x, Tok.Arrow ] <> ts
+    )
+
+
+genTerm1 :: Gen (Term, [Token])
+genTerm1 = do
+  (x0, ts0) <- genTerm2
+  ts        <- Gen.list (Range.linear 0 10) genTerm2
+  return $ (foldl AST.Apply x0 *** foldl (<>) ts0) (unzip ts)
+
+
+genTerm2 :: Gen (Term, [Token])
+genTerm2 = genIfTerm <|> genLetTerm <|> genTerm3
+
+
+genIfTerm :: Gen (Term, [Token])
+genIfTerm = todo
+
+
+genLetTerm :: Gen (Term, [Token])
+genLetTerm = todo
+
+
+genTerm3 :: Gen (Term, [Token])
+genTerm3 = genInfixApply <|> genTerm4
+
+
+genInfixApply :: Gen (Term, [Token])
+genInfixApply = todo
+
+
+genTerm4 :: Gen (Term, [Token])
+genTerm4 = genForce <|> genDelay <|> genTerm5
+
+
+genForce :: Gen (Term, [Token])
+genForce = todo
+
+
+genDelay :: Gen (Term, [Token])
+genDelay = todo
+
+
+genTerm5 :: Gen (Term, [Token])
+genTerm5 = genVarTerm <|> genBuiltinTerm <|> genErrorTerm <|> genParenthesizedTerm <|> genConstantTerm
+
+
+genVarTerm :: Gen (Term, [Token])
+genVarTerm = todo
+
+
+genBuiltinTerm :: Gen (Term, [Token])
+genBuiltinTerm = todo
+
+
+genErrorTerm :: Gen (Term, [Token])
+genErrorTerm = todo
+
+
+genParenthesizedTerm :: Gen (Term, [Token])
+genParenthesizedTerm = todo
+
+
+genConstantTerm :: Gen (Term, [Token])
+genConstantTerm = todo
+
+
+todo :: a
+todo = todo

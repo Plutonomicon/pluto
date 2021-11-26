@@ -87,9 +87,9 @@ lambdaTerm = do
 
 term1 :: Parser Term
 term1 = do
-  t  <- term1
+  t0  <- term2
   ts <- many term2
-  return $ foldl AST.Apply t ts
+  return $ foldl AST.Apply t0 ts
 
 
 term2 :: Parser Term
