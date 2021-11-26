@@ -9,8 +9,8 @@ module PlutusCore.Assembler.Spec.Gen
   , genName
   , genWhitespace
   , genData
-  , genConstant
-  , genTerm
+  , genConstantAST
+  , genTermAST
   ) where
 
 
@@ -122,8 +122,8 @@ genData =
   ]
 
 
-genConstant :: Gen Constant
-genConstant =
+genConstantAST :: Gen Constant
+genConstantAST =
   Gen.choice
   [ AST.I <$> genInteger
   , AST.S <$> genByteString
@@ -131,39 +131,39 @@ genConstant =
   , pure AST.U
   , pure (AST.B True)
   , pure (AST.B False)
-  , AST.L <$> Gen.list (Range.linear 0 10) genConstant
-  , AST.P <$> ((,) <$> genConstant <*> genConstant)
+  , AST.L <$> Gen.list (Range.linear 0 10) genConstantAST
+  , AST.P <$> ((,) <$> genConstantAST <*> genConstantAST)
   , AST.D <$> genData
   ]
 
 
-genBinding :: Gen Binding
-genBinding = AST.Binding <$> (AST.Name <$> genName) <*> genTerm
+genBindingAST :: Gen Binding
+genBindingAST = AST.Binding <$> (AST.Name <$> genName) <*> genTermAST
 
 
-genOpTerm :: Gen OpTerm
-genOpTerm =
+genOpTermAST :: Gen OpTerm
+genOpTermAST =
   AST.OpTerm
   <$> (      (AST.Builtin        <$> Gen.enumBounded)
          <|> (AST.Var . AST.Name <$> genName)           )
 
 
-genTerm :: Gen Term
-genTerm =
+genTermAST :: Gen Term
+genTermAST =
   Gen.choice
   [ AST.Var . AST.Name <$> genName
-  , AST.Lambda <$> genBinding
-  , AST.Apply <$> genTerm <*> genTerm
-  , AST.Force <$> genTerm
-  , AST.Delay <$> genTerm
-  , AST.Constant <$> genConstant
+  , AST.Lambda <$> genBindingAST
+  , AST.Apply <$> genTermAST <*> genTermAST
+  , AST.Force <$> genTermAST
+  , AST.Delay <$> genTermAST
+  , AST.Constant <$> genConstantAST
   , AST.Builtin <$> Gen.enumBounded
   , pure AST.Error
-  , AST.Let <$> (Gen.list (Range.linear 0 10) genBinding) <*> genTerm
-  , AST.IfThenElse <$> (AST.IfTerm   <$> genTerm)
-                   <*> (AST.ThenTerm <$> genTerm)
-                   <*> (AST.ElseTerm <$> genTerm)
-  , AST.InfixApply <$> (AST.LeftTerm <$> genTerm)
-                   <*> genOpTerm
-                   <*> (AST.RightTerm <$> genTerm)
+  , AST.Let <$> (Gen.list (Range.linear 0 10) genBindingAST) <*> genTermAST
+  , AST.IfThenElse <$> (AST.IfTerm   <$> genTermAST)
+                   <*> (AST.ThenTerm <$> genTermAST)
+                   <*> (AST.ElseTerm <$> genTermAST)
+  , AST.InfixApply <$> (AST.LeftTerm <$> genTermAST)
+                   <*> genOpTermAST
+                   <*> (AST.RightTerm <$> genTermAST)
   ]
