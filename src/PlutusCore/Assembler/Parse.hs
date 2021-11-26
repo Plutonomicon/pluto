@@ -101,9 +101,9 @@ ifTerm = do
   consumeExact Tok.If ()
   i <- AST.IfTerm <$> term3
   consumeExact Tok.Then ()
-  t <- AST.ThenTerm <$> term3
+  t <- AST.ThenTerm <$> term2
   consumeExact Tok.Else ()
-  e <- AST.ElseTerm <$> term3
+  e <- AST.ElseTerm <$> term2
   return (AST.IfThenElse i t e)
 
 
