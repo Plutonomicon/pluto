@@ -82,6 +82,7 @@ test-suite spec
     lens,
     text -any,
     mtl,
+    parsec,
     playground-common,
     plutus-pab,
     plutus-core,
