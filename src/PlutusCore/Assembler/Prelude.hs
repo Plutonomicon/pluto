@@ -25,10 +25,10 @@ import           Prelude             (Bool (False, True), Bounded, Char,
                                       Either (Left, Right), Enum, Eq,
                                       Functor (fmap), IO, Integer,
                                       Maybe (Just, Nothing),
-                                      Monad (return, (>>=)), Num ((*), (+)),
+                                      Monad (return, (>>=)), Num ((*), (+), (-)), Real, Integral,
                                       Show (show), String, foldl, fst, negate,
                                       snd, ($), (&&), (.), (/=), (<$), (<$>),
-                                      (<=), (<>), (==), (>>), (||))
+                                      (<=), (<>), (==), (>>), (||), Ord)
 
 
 (<$$>) :: ( Functor f, Functor g ) => (a -> b) -> f (g a) -> f (g b)

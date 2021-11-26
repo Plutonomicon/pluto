@@ -5,6 +5,8 @@
 module PlutusCore.Assembler.Spec.ParseSpec ( tests ) where
 
 
+import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Range as Range
 import Text.Parsec.Pos (SourcePos, newPos)
 
 import PlutusCore.Assembler.Spec.Prelude
@@ -27,5 +29,6 @@ fakeSourcePos = newPos "test" 0 0
 testParseValidTokenList :: TestTree
 testParseValidTokenList =
   testProperty "parses a syntactically valid token list" . property $ do
-    (t, tts) <- forAll genTerm
+    n <- forAll (Gen.integral (Range.linear 0 100))
+    (t, tts) <- forAll (genTerm n)
     parse ((,fakeSourcePos) <$> tts) === Right (Program t)

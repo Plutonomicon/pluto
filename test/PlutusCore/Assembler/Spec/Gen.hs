@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -28,6 +29,11 @@ import qualified PlutusCore.Assembler.Types.AST as AST
 import qualified PlutusCore.Assembler.Types.Token as Tok
 import qualified PlutusCore.Assembler.Types.InfixBuiltin as InfixBuiltin
 import PlutusCore.Assembler.ConstantToTokens (constantToTokens)
+
+
+-- Passed to a generator, indicates the maximum recursion depth its children should have.
+newtype RecursionDepth = RecursionDepth { unRecursionDepth :: Integer }
+  deriving (Eq, Show, Ord, Enum, Num, Real, Integral)
 
 
 genText :: Gen Text
@@ -115,20 +121,25 @@ genMultiLineComment =
     (Gen.element [ c | c <- ['\0'..'\xff'], c /= '}' ])
 
 
-genData :: Gen Data
-genData =
+genData :: RecursionDepth -> Gen Data
+genData 0 =
   Gen.choice
   [ Data.I <$> genInteger
   , Data.B <$> genByteString
-  , Data.List <$> Gen.list (Range.linear 0 10) genData
+  ]
+genData n =
+  Gen.choice
+  [ Data.I <$> genInteger
+  , Data.B <$> genByteString
+  , Data.List <$> Gen.list (Range.linear 0 10) (genData (n-1))
   , Data.Map <$> Gen.list (Range.linear 0 10)
-                 ((,) <$> genData <*> genData)
-  , Data.Constr <$> genInteger <*> Gen.list (Range.linear 0 10) genData
+                 ((,) <$> genData (n-1) <*> genData (n-1))
+  , Data.Constr <$> genInteger <*> Gen.list (Range.linear 0 10) (genData (n-1))
   ]
 
 
-genConstantAST :: Gen Constant
-genConstantAST =
+genConstantAST :: RecursionDepth -> Gen Constant
+genConstantAST 0 =
   Gen.choice
   [ AST.I <$> genInteger
   , AST.S <$> genByteString
@@ -136,14 +147,23 @@ genConstantAST =
   , pure AST.U
   , pure (AST.B True)
   , pure (AST.B False)
-  , AST.L <$> Gen.list (Range.linear 0 10) genConstantAST
-  , AST.P <$> ((,) <$> genConstantAST <*> genConstantAST)
-  , AST.D <$> genData
+  ]
+genConstantAST n =
+  Gen.choice
+  [ AST.I <$> genInteger
+  , AST.S <$> genByteString
+  , AST.T <$> genText
+  , pure AST.U
+  , pure (AST.B True)
+  , pure (AST.B False)
+  , AST.L <$> Gen.list (Range.linear 0 10) (genConstantAST (n-1))
+  , AST.P <$> ((,) <$> genConstantAST (n-1) <*> genConstantAST (n-1))
+  , AST.D <$> genData (n-1)
   ]
 
 
-genBindingAST :: Gen Binding
-genBindingAST = AST.Binding <$> (AST.Name <$> genName) <*> genTermAST
+genBindingAST :: RecursionDepth -> Gen Binding
+genBindingAST n = AST.Binding <$> (AST.Name <$> genName) <*> genTermAST n
 
 
 genOpTermAST :: Gen OpTerm
@@ -153,106 +173,116 @@ genOpTermAST =
          <|> (AST.Var . AST.Name <$> genName)           )
 
 
-genTermAST :: Gen Term
-genTermAST =
+genTermAST :: RecursionDepth -> Gen Term
+genTermAST 0 =
   Gen.choice
   [ AST.Var . AST.Name <$> genName
-  , AST.Lambda <$> genBindingAST
-  , AST.Apply <$> genTermAST <*> genTermAST
-  , AST.Force <$> genTermAST
-  , AST.Delay <$> genTermAST
-  , AST.Constant <$> genConstantAST
+  , AST.Constant <$> genConstantAST 0
   , AST.Builtin <$> Gen.enumBounded
   , pure AST.Error
-  , AST.Let <$> (Gen.list (Range.linear 0 10) genBindingAST) <*> genTermAST
-  , AST.IfThenElse <$> (AST.IfTerm   <$> genTermAST)
-                   <*> (AST.ThenTerm <$> genTermAST)
-                   <*> (AST.ElseTerm <$> genTermAST)
-  , AST.InfixApply <$> (AST.LeftTerm <$> genTermAST)
+  ]
+genTermAST n =
+  Gen.choice
+  [ AST.Var . AST.Name <$> genName
+  , AST.Lambda <$> genBindingAST (n-1)
+  , AST.Apply <$> genTermAST (n-1) <*> genTermAST (n-1)
+  , AST.Force <$> genTermAST (n-1)
+  , AST.Delay <$> genTermAST (n-1)
+  , AST.Constant <$> genConstantAST (n-1)
+  , AST.Builtin <$> Gen.enumBounded
+  , pure AST.Error
+  , AST.Let <$> (Gen.list (Range.linear 0 10) (genBindingAST (n-1))) <*> genTermAST (n-1)
+  , AST.IfThenElse <$> (AST.IfTerm   <$> genTermAST (n-1))
+                   <*> (AST.ThenTerm <$> genTermAST (n-1))
+                   <*> (AST.ElseTerm <$> genTermAST (n-1))
+  , AST.InfixApply <$> (AST.LeftTerm <$> genTermAST (n-1))
                    <*> genOpTermAST
-                   <*> (AST.RightTerm <$> genTermAST)
+                   <*> (AST.RightTerm <$> genTermAST (n-1))
   ]
 
 
 -- Generates a syntactically valid token string and the term
 -- it represents.
-genTerm :: Gen (Term, [Token])
+genTerm :: RecursionDepth -> Gen (Term, [Token])
 genTerm = genTerm0
 
 
-genTerm0 :: Gen (Term, [Token])
-genTerm0 = Gen.choice [genLambda, genTerm1]
+genTerm0 :: RecursionDepth -> Gen (Term, [Token])
+genTerm0 0 = genTerm1 0
+genTerm0 n = Gen.choice [genLambda (n-1), genTerm1 n]
 
 
-genLambda :: Gen (Term, [Token])
-genLambda = do
+genLambda :: RecursionDepth -> Gen (Term, [Token])
+genLambda n = do
   x <- genName
-  (y, ts) <- genTerm
+  (y, ts) <- genTerm n
   return
     ( AST.Lambda (AST.Binding (AST.Name x) y)
     , [ Tok.Lambda, Tok.Var x, Tok.Arrow ] <> ts
     )
 
 
-genTerm1 :: Gen (Term, [Token])
-genTerm1 = do
-  (x0, ts0) <- genTerm2
-  ts        <- Gen.list (Range.linear 0 10) genTerm2
+genTerm1 :: RecursionDepth -> Gen (Term, [Token])
+genTerm1 n = do
+  (x0, ts0) <- genTerm2 n
+  ts        <- Gen.list (Range.linear 0 10) (genTerm2 n)
   return $ (foldl AST.Apply x0 *** foldl (<>) ts0) (unzip ts)
 
 
-genTerm2 :: Gen (Term, [Token])
-genTerm2 = Gen.choice [genIfTerm, genLetTerm, genTerm3]
+genTerm2 :: RecursionDepth -> Gen (Term, [Token])
+genTerm2 0 = genTerm3 0
+genTerm2 n = Gen.choice [genIfTerm (n-1), genLetTerm (n-1), genTerm3 n]
 
 
-genIfTerm :: Gen (Term, [Token])
-genIfTerm = do
-  (it, itts) <- first AST.IfTerm <$> genTerm3
-  (tt, ttts) <- first AST.ThenTerm <$> genTerm2
-  (et, etts) <- first AST.ElseTerm <$> genTerm2
+genIfTerm :: RecursionDepth -> Gen (Term, [Token])
+genIfTerm n = do
+  (it, itts) <- first AST.IfTerm <$> genTerm3 n
+  (tt, ttts) <- first AST.ThenTerm <$> genTerm2 n
+  (et, etts) <- first AST.ElseTerm <$> genTerm2 n
   return
     ( AST.IfThenElse it tt et
     , [Tok.If] <> itts <> [Tok.Then] <> ttts <> [Tok.Else] <> etts
     )
 
 
-genLetTerm :: Gen (Term, [Token])
-genLetTerm = do
-  (bs, bsts) <- unzip <$> Gen.list (Range.linear 1 10) genLetBinding
-  (t, tts)   <- genTerm2
+genLetTerm :: RecursionDepth -> Gen (Term, [Token])
+genLetTerm n = do
+  (bs, bsts) <- unzip <$> Gen.list (Range.linear 1 10) (genLetBinding n)
+  (t, tts)   <- genTerm2 n
   return
     ( AST.Let bs t
     , [Tok.Let] <> intercalate [Tok.Semicolon] bsts <> [Tok.In] <> tts
     )
 
 
-genLetBinding :: Gen (Binding, [Token])
-genLetBinding = do
+genLetBinding :: RecursionDepth -> Gen (Binding, [Token])
+genLetBinding n = do
   x        <- genName
-  (t, tts) <- genTerm
+  (t, tts) <- genTerm n
   return
     ( AST.Binding (AST.Name x) t
     , [Tok.Var x, Tok.Equals] <> tts
     )
 
 
-genTerm3 :: Gen (Term, [Token])
-genTerm3 = Gen.choice [genInfixApply, genTerm4]
+genTerm3 :: RecursionDepth -> Gen (Term, [Token])
+genTerm3 0 = genTerm4 0
+genTerm3 n = Gen.choice [genInfixApply (n-1), genTerm4 n]
 
 
-genInfixApply :: Gen (Term, [Token])
-genInfixApply =
+genInfixApply :: RecursionDepth -> Gen (Term, [Token])
+genInfixApply n =
   Gen.choice
-  [ genBuiltinInfixOpApply
-  , genBuiltinBacktickInfixApply
-  , genVarInfixApply
+  [ genBuiltinInfixOpApply n
+  , genBuiltinBacktickInfixApply n
+  , genVarInfixApply n
   ]
 
 
-genBuiltinInfixOpApply :: Gen (Term, [Token])
-genBuiltinInfixOpApply = do
-  (x, tsx) <- genTerm4
-  (y, tsy) <- genTerm4
+genBuiltinInfixOpApply :: RecursionDepth -> Gen (Term, [Token])
+genBuiltinInfixOpApply n = do
+  (x, tsx) <- genTerm4 n
+  (y, tsy) <- genTerm4 n
   o <- Gen.enumBounded
   return ( AST.InfixApply (AST.LeftTerm x)
                           (AST.OpTerm (AST.Builtin (InfixBuiltin.toBuiltin o)))
@@ -261,10 +291,10 @@ genBuiltinInfixOpApply = do
          )
 
 
-genBuiltinBacktickInfixApply :: Gen (Term, [Token])
-genBuiltinBacktickInfixApply = do
-  (x, tsx) <- genTerm4
-  (y, tsy) <- genTerm4
+genBuiltinBacktickInfixApply :: RecursionDepth -> Gen (Term, [Token])
+genBuiltinBacktickInfixApply n = do
+  (x, tsx) <- genTerm4 n
+  (y, tsy) <- genTerm4 n
   o <- Gen.enumBounded
   return ( AST.InfixApply (AST.LeftTerm x)
                           (AST.OpTerm (AST.Builtin o))
@@ -273,10 +303,10 @@ genBuiltinBacktickInfixApply = do
          )
 
 
-genVarInfixApply :: Gen (Term, [Token])
-genVarInfixApply = do
-  (x, tsx) <- genTerm4
-  (y, tsy) <- genTerm4
+genVarInfixApply :: RecursionDepth -> Gen (Term, [Token])
+genVarInfixApply n = do
+  (x, tsx) <- genTerm4 n
+  (y, tsy) <- genTerm4 n
   o <- genName
   return ( AST.InfixApply (AST.LeftTerm x)
                           (AST.OpTerm (AST.Var (AST.Name o)))
@@ -285,35 +315,43 @@ genVarInfixApply = do
          )
 
 
-genTerm4 :: Gen (Term, [Token])
-genTerm4 =
+genTerm4 :: RecursionDepth -> Gen (Term, [Token])
+genTerm4 0 = genTerm5 0
+genTerm4 n =
   Gen.choice
-  [ genForce
-  , genDelay
-  , genTerm5
+  [ genForce (n-1)
+  , genDelay (n-1)
+  , genTerm5 n
   ]
 
 
-genForce :: Gen (Term, [Token])
-genForce = do
-  (x, ts) <- genTerm5
+genForce :: RecursionDepth -> Gen (Term, [Token])
+genForce n = do
+  (x, ts) <- genTerm5 n
   return (AST.Force x, [Tok.Force] <> ts)
 
 
-genDelay :: Gen (Term, [Token])
-genDelay = do
-  (x, ts) <- genTerm5
+genDelay :: RecursionDepth -> Gen (Term, [Token])
+genDelay n = do
+  (x, ts) <- genTerm5 n
   return (AST.Delay x, [Tok.Delay] <> ts)
 
 
-genTerm5 :: Gen (Term, [Token])
-genTerm5 =
+genTerm5 :: RecursionDepth -> Gen (Term, [Token])
+genTerm5 0 =
   Gen.choice
   [ genVarTerm
   , genBuiltinTerm
   , genErrorTerm
-  , genParenthesizedTerm
-  , genConstantTerm
+  , genConstantTerm 0
+  ]
+genTerm5 n =
+  Gen.choice
+  [ genVarTerm
+  , genBuiltinTerm
+  , genErrorTerm
+  , genParenthesizedTerm (n-1)
+  , genConstantTerm n
   ]
 
 
@@ -333,13 +371,13 @@ genErrorTerm :: Gen (Term, [Token])
 genErrorTerm = pure (AST.Error, [Tok.Error])
 
 
-genParenthesizedTerm :: Gen (Term, [Token])
-genParenthesizedTerm = do
-  (x, ts) <- genTerm
+genParenthesizedTerm :: RecursionDepth -> Gen (Term, [Token])
+genParenthesizedTerm n = do
+  (x, ts) <- genTerm n
   return (x, [Tok.OpenParen] <> ts <> [Tok.CloseParen])
 
 
-genConstantTerm :: Gen (Term, [Token])
-genConstantTerm = do
-  t <- genConstantAST
+genConstantTerm :: RecursionDepth -> Gen (Term, [Token])
+genConstantTerm n = do
+  t <- genConstantAST n
   return (AST.Constant t, constantToTokens t)
