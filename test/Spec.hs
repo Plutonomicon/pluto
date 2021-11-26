@@ -9,6 +9,7 @@ import           Test.Tasty                             (defaultMain,
 import           Test.Tasty.Hedgehog                    (HedgehogTestLimit (..))
 
 import           PlutusCore.Assembler.Spec.Prelude
+import qualified PlutusCore.Assembler.Spec.ParseSpec    as Parse
 import qualified PlutusCore.Assembler.Spec.TokenizeSpec as Tokenize
 
 
@@ -26,5 +27,6 @@ tests =
   localOption limit
   $
   testGroup "plutus-core-assembler"
-  [ Tokenize.tests
+  [ Parse.tests
+  , Tokenize.tests
   ]
