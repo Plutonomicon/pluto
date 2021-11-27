@@ -18,4 +18,4 @@ import PlutusCore.Assembler.Desugar (desugar)
 
 -- Either assemble the given code into Plutus bytecode or fail with an error message.
 assemble :: Text -> Either ErrorMessage ByteString
-assemble txt = toStrict . serialise . Script <$> (tokenize txt >>= parse >>= desugar . annDeBruijn)
+assemble txt = toStrict . serialise . Script <$> (desugar . annDeBruijn =<< parse =<< tokenize txt)

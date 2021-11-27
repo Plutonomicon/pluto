@@ -32,7 +32,7 @@ import           Prelude             (Bool (False, True), Bounded, Char,
                                       Show (show), String, all, const, foldl,
                                       fst, negate, reverse, snd, ($), (&&), (.),
                                       (/=), (<$), (<$>), (<=), (<>), (==), (>=),
-                                      (>>), (||))
+                                      (>>), (||), (=<<))
 
 
 (<$$>) :: ( Functor f, Functor g ) => (a -> b) -> f (g a) -> f (g b)
