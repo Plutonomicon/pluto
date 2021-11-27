@@ -1,17 +1,17 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections     #-}
 
 
 module PlutusCore.Assembler.AnnDeBruijn ( annDeBruijn ) where
 
 
-import qualified Data.Map as Map
+import qualified Data.Map                       as Map
 
+import           PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Types.AST (Binding, Name, Program, Term)
 import qualified PlutusCore.Assembler.Types.AST as AST
-import PlutusCore.Assembler.Prelude
-import PlutusCore.Assembler.Types.AST (Program, Term, Binding, Name)
-import PlutusCore.DeBruijn (DeBruijn (..), Index (..))
+import           PlutusCore.DeBruijn            (DeBruijn (..), Index (..))
 
 
 -- Amend the annotations with a lookup table of de Bruijn indices
