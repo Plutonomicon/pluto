@@ -13,9 +13,10 @@ import qualified UntypedPlutusCore.Core.Type as UPLC
 import qualified PlutusCore.Core as PLC
 import qualified Data.Map as Map
 import qualified Data.Text as Text
+import qualified PlutusCore.Default as PLC
 
 import PlutusCore.Assembler.Prelude
-import PlutusCore.Assembler.Types.AST (Program, Term, Name, Constant, Builtin)
+import PlutusCore.Assembler.Types.AST (Program, Term, Name, Constant, Builtin, Binding)
 import qualified PlutusCore.Assembler.Types.AST as AST
 import PlutusCore.Assembler.AnnDeBruijn (addNameToMap)
 
@@ -52,7 +53,20 @@ desugarTerm =
     AST.Constant _ x -> pure (UPLC.Constant () (desugarConstant x))
     AST.Builtin _ f -> pure (UPLC.Builtin () (desugarBuiltin f))
     AST.Error _ -> pure (UPLC.Error ())
+    AST.Let _ bs x -> desugarLet bs x
+    AST.IfThenElse _ (AST.IfTerm i) (AST.ThenTerm t) (AST.ElseTerm e) ->
+      UPLC.Apply ()
+        <$> ( UPLC.Apply ()
+                 <$> (UPLC.Apply () (UPLC.Builtin () PLC.IfThenElse)
+                       <$> desugarTerm i)
+                 <*> desugarTerm t )
+        <*> desugarTerm e
     _ -> todo
+
+
+desugarLet :: [Binding (SourcePos, Map Name DeBruijn)] -> Term (SourcePos, Map Name DeBruijn) -> Either Text UnsweetTerm
+desugarLet = todo
+
 
 
 desugarConstant :: Constant ann -> Some (ValueOf DefaultUni)
