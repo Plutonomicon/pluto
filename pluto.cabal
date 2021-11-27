@@ -9,6 +9,7 @@ maintainer:    ryanmatovu@gmail.com
 
 library
   exposed-modules:
+    PlutusCore.Assembler.AnnDeBruijn
     PlutusCore.Assembler.ConstantToTokens
     PlutusCore.Assembler.Parse
     PlutusCore.Assembler.Prelude

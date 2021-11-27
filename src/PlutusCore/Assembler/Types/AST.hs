@@ -30,7 +30,7 @@ newtype Program ann = Program { unProgram :: Term ann }
 
 
 newtype Name = Name { getName :: Text }
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 
 data Term ann =
