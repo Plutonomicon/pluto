@@ -9,6 +9,7 @@ maintainer:    ryanmatovu@gmail.com
 
 library
   exposed-modules:
+    PlutusCore.Assembler.AnnDeBruijn
     PlutusCore.Assembler.ConstantToTokens
     PlutusCore.Assembler.Parse
     PlutusCore.Assembler.Prelude
@@ -63,6 +64,7 @@ test-suite spec
   main-is: Spec.hs
 
   other-modules:
+    PlutusCore.Assembler.Spec.AnnDeBruijnSpec
     PlutusCore.Assembler.Spec.Gen
     PlutusCore.Assembler.Spec.Prelude
     PlutusCore.Assembler.Spec.ParseSpec

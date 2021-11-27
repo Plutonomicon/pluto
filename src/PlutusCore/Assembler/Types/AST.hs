@@ -1,4 +1,6 @@
+{-# LANGUAGE DeriveFoldable    #-}
 {-# LANGUAGE DeriveFunctor     #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 
@@ -26,11 +28,11 @@ import           PlutusCore.Data                     (Data)
 
 
 newtype Program ann = Program { unProgram :: Term ann }
-  deriving (Eq, Show, Functor)
+  deriving (Eq, Show, Functor, Foldable)
 
 
 newtype Name = Name { getName :: Text }
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 
 data Term ann =
@@ -47,30 +49,49 @@ data Term ann =
   | InfixApply ann (LeftTerm ann) (OpTerm ann) (RightTerm ann)
   deriving (Eq, Show, Functor)
 
+instance Foldable Term where
+  foldMap f =
+    \case
+      Var a _            -> f a
+      Lambda a _ t       -> f a <> foldMap f t
+      Apply a g x        -> f a <> foldMap f g <> foldMap f x
+      Force a x          -> f a <> foldMap f x
+      Delay a x          -> f a <> foldMap f x
+      Constant a x       -> f a <> foldMap f x
+      Builtin a _        -> f a
+      Error a            -> f a
+      Let a bs x         -> f a <> foldMap (foldMap f) bs <> foldMap f x
+      IfThenElse a i t e -> f a <> foldMap f i <> foldMap f t <> foldMap f e
+      InfixApply a l o r -> f a <> foldMap f l <> foldMap f o <> foldMap f r
+
 
 newtype IfTerm ann = IfTerm (Term ann)
-  deriving (Eq, Show, Functor)
+  deriving (Eq, Show, Functor, Foldable)
 
 
 newtype ThenTerm ann = ThenTerm (Term ann)
-  deriving (Eq, Show, Functor)
+  deriving (Eq, Show, Functor, Foldable)
 
 
 newtype ElseTerm ann = ElseTerm (Term ann)
-  deriving (Eq, Show, Functor)
+  deriving (Eq, Show, Functor, Foldable)
 
 
 newtype LeftTerm ann = LeftTerm (Term ann)
-  deriving (Eq, Show, Functor)
+  deriving (Eq, Show, Functor, Foldable)
 
 
 newtype RightTerm ann = RightTerm (Term ann)
-  deriving (Eq, Show, Functor)
+  deriving (Eq, Show, Functor, Foldable)
 
 
 newtype OpTerm ann = OpTerm (Term ann)
-  deriving (Eq, Show, Functor)
+  deriving (Eq, Show, Functor, Foldable)
 
 
 data Binding ann = Binding ann Name (Term ann)
   deriving (Eq, Show, Functor)
+
+instance Foldable Binding where
+  foldMap f (Binding a _ x) =
+    f a <> foldMap f x

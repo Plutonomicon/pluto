@@ -8,6 +8,7 @@ module PlutusCore.Assembler.Prelude
   , module Data.ByteString
   , module Data.Either.Extra
   , module Data.List
+  , module Data.Map
   , module Data.Text
   , module Prelude
   , (<$$>)
@@ -20,16 +21,18 @@ import           Control.Monad       (guard, mzero, void)
 import           Data.ByteString     (ByteString)
 import           Data.Either.Extra   (eitherToMaybe)
 import           Data.List           (concat, unzip)
+import           Data.Map            (Map)
 import           Data.Text           (Text)
 import           Prelude             (Bool (False, True), Bounded, Char,
                                       Either (Left, Right), Enum, Eq,
-                                      Functor (fmap), IO, Integer, Integral,
-                                      Maybe (Just, Nothing),
-                                      Monad (return, (>>=)),
+                                      Foldable (foldMap), Functor (fmap), IO,
+                                      Integer, Integral, Maybe (Just, Nothing),
+                                      Monad (return, (>>=)), Monoid (mempty),
                                       Num ((*), (+), (-)), Ord, Real,
-                                      Show (show), String, const, foldl, fst,
-                                      negate, snd, ($), (&&), (.), (/=), (<$),
-                                      (<$>), (<=), (<>), (==), (>>), (||))
+                                      Show (show), String, all, const, foldl,
+                                      fst, negate, snd, ($), (&&), (.), (/=),
+                                      (<$), (<$>), (<=), (<>), (==), (>=), (>>),
+                                      (||))
 
 
 (<$$>) :: ( Functor f, Functor g ) => (a -> b) -> f (g a) -> f (g b)

@@ -12,6 +12,7 @@ module PlutusCore.Assembler.Spec.Gen
   , genData
   , genConstantAST
   , genTerm
+  , genRecursionDepth
   ) where
 
 
@@ -34,6 +35,10 @@ import qualified PlutusCore.Assembler.Types.Token        as Tok
 -- Passed to a generator, indicates the maximum recursion depth its children should have.
 newtype RecursionDepth = RecursionDepth { unRecursionDepth :: Integer }
   deriving (Eq, Show, Ord, Enum, Num, Real, Integral)
+
+
+genRecursionDepth :: Gen RecursionDepth
+genRecursionDepth = Gen.integral (Range.linear 0 10)
 
 
 genText :: Gen Text
