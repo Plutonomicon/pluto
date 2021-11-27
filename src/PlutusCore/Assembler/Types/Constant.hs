@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveFunctor     #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 
@@ -26,11 +26,11 @@ data Constant ann =
 instance Foldable Constant where
   foldMap f =
     \case
-      I a _ -> f a
-      S a _ -> f a
-      T a _ -> f a
-      U a   -> f a
-      B a _ -> f a
-      L a cs -> f a <> foldMap (foldMap f) cs
+      I a _      -> f a
+      S a _      -> f a
+      T a _      -> f a
+      U a        -> f a
+      B a _      -> f a
+      L a cs     -> f a <> foldMap (foldMap f) cs
       P a (x, y) -> f a <> foldMap f x <> foldMap f y
-      D a _ -> f a
+      D a _      -> f a

@@ -4,13 +4,13 @@
 module PlutusCore.Assembler.Spec.AnnDeBruijnSpec (tests) where
 
 
-import PlutusCore.DeBruijn (DeBruijn (..), Index (..))
+import           PlutusCore.DeBruijn               (DeBruijn (..), Index (..))
 
-import PlutusCore.Assembler.Spec.Prelude
-import PlutusCore.Assembler.Prelude
-import PlutusCore.Assembler.Spec.Gen (genTerm, genRecursionDepth)
-import qualified PlutusCore.Assembler.Types.AST as AST
-import PlutusCore.Assembler.AnnDeBruijn (annDeBruijn)
+import           PlutusCore.Assembler.AnnDeBruijn  (annDeBruijn)
+import           PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Spec.Gen     (genRecursionDepth, genTerm)
+import           PlutusCore.Assembler.Spec.Prelude
+import qualified PlutusCore.Assembler.Types.AST    as AST
 
 
 tests :: TestTree

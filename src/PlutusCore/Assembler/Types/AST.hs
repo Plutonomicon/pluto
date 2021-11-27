@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFoldable    #-}
 {-# LANGUAGE DeriveFunctor     #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 
@@ -52,15 +52,15 @@ data Term ann =
 instance Foldable Term where
   foldMap f =
     \case
-      Var a _ -> f a
-      Lambda a _ t -> f a <> foldMap f t
-      Apply a g x -> f a <> foldMap f g <> foldMap f x
-      Force a x -> f a <> foldMap f x
-      Delay a x -> f a <> foldMap f x
-      Constant a x -> f a <> foldMap f x
-      Builtin a _ -> f a
-      Error a -> f a
-      Let a bs x -> f a <> foldMap (foldMap f) bs <> foldMap f x
+      Var a _            -> f a
+      Lambda a _ t       -> f a <> foldMap f t
+      Apply a g x        -> f a <> foldMap f g <> foldMap f x
+      Force a x          -> f a <> foldMap f x
+      Delay a x          -> f a <> foldMap f x
+      Constant a x       -> f a <> foldMap f x
+      Builtin a _        -> f a
+      Error a            -> f a
+      Let a bs x         -> f a <> foldMap (foldMap f) bs <> foldMap f x
       IfThenElse a i t e -> f a <> foldMap f i <> foldMap f t <> foldMap f e
       InfixApply a l o r -> f a <> foldMap f l <> foldMap f o <> foldMap f r
 

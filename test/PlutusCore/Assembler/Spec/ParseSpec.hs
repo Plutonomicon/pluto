@@ -9,7 +9,7 @@ import           Text.Parsec.Pos                   (SourcePos, newPos)
 
 import           PlutusCore.Assembler.Parse        (parse)
 import           PlutusCore.Assembler.Prelude
-import           PlutusCore.Assembler.Spec.Gen     (genTerm, genRecursionDepth)
+import           PlutusCore.Assembler.Spec.Gen     (genRecursionDepth, genTerm)
 import           PlutusCore.Assembler.Spec.Prelude
 import           PlutusCore.Assembler.Types.AST    (Program (..))
 

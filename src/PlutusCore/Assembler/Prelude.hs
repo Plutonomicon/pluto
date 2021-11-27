@@ -25,13 +25,14 @@ import           Data.Map            (Map)
 import           Data.Text           (Text)
 import           Prelude             (Bool (False, True), Bounded, Char,
                                       Either (Left, Right), Enum, Eq,
-                                      Functor (fmap), IO, Integer, Integral,
-                                      Maybe (Just, Nothing),
+                                      Foldable (foldMap), Functor (fmap), IO,
+                                      Integer, Integral, Maybe (Just, Nothing),
                                       Monad (return, (>>=)), Monoid (mempty),
                                       Num ((*), (+), (-)), Ord, Real,
-                                      Show (show), String, const, foldl, fst, Foldable (foldMap),
-                                      negate, snd, ($), (&&), (.), (/=), (<$),
-                                      (<$>), (<=), (<>), (==), (>>), (||), all, (>=))
+                                      Show (show), String, all, const, foldl,
+                                      fst, negate, snd, ($), (&&), (.), (/=),
+                                      (<$), (<$>), (<=), (<>), (==), (>=), (>>),
+                                      (||))
 
 
 (<$$>) :: ( Functor f, Functor g ) => (a -> b) -> f (g a) -> f (g b)
