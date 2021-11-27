@@ -1,0 +1,17 @@
+let
+  todo = Error;
+  over = MkCons;
+  num = FstPair;
+  denom = SndPair;
+  norm = todo;
+  plus = ( \x y ->
+           ( let a = num x;
+                 b = denom x;
+                 c = num y;
+                 d = denom y
+             in norm (((a *i d) +i (b *i c)) `over` (b *i d))
+           )
+         );
+  zero = 0 `MkCons` 1
+in
+  plus `MkCons` ( zero `MkCons` NullList )
