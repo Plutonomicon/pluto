@@ -23,14 +23,6 @@ constantToTokens =
     T _ x     -> [T.Text x]
     U _       -> [T.OpenParen, T.CloseParen]
     B _ x     -> [T.Bool x]
-    L _ xs    -> [T.OpenBracket]
-              <> intercalate [T.Comma] (constantToTokens <$> xs)
-              <> [T.CloseBracket]
-    P _ (a,b) -> [T.OpenParen]
-              <> constantToTokens a
-              <> [T.Comma]
-              <> constantToTokens b
-              <> [T.CloseParen]
     D _ d     -> [T.Data] <> dataToTokens d
 
 

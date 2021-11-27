@@ -198,16 +198,13 @@ constantTerm = do
 
 
 constant :: Parser (Constant SourcePos)
-constant = do
-  p <- getPosition
-  bool
-    <|> integer
-    <|> byteString
-    <|> try unit
-    <|> text
-    <|> (AST.L p <$> bracketList constant)
-    <|> try tuple
-    <|> try dataConstant
+constant =
+      bool
+  <|> integer
+  <|> byteString
+  <|> try unit
+  <|> text
+  <|> try dataConstant
 
 
 bool :: Parser (Constant SourcePos)
@@ -260,17 +257,6 @@ list p = do
         consumeExact_ Tok.Comma
         p
     return (l0:ls)
-
-
-tuple :: Parser (Constant SourcePos)
-tuple = do
-  p <- getPosition
-  consumeExact_ Tok.OpenParen
-  p0 <- constant
-  consumeExact_ Tok.Comma
-  p1 <- constant
-  consumeExact_ Tok.CloseParen
-  return (AST.P p (p0, p1))
 
 
 dataConstant :: Parser (Constant SourcePos)

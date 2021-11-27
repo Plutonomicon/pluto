@@ -161,8 +161,6 @@ genConstantAST n =
   , pure (AST.U ())
   , pure (AST.B () True)
   , pure (AST.B () False)
-  , AST.L () <$> Gen.list (Range.linear 0 10) (genConstantAST (n-1))
-  , AST.P () <$> ((,) <$> genConstantAST (n-1) <*> genConstantAST (n-1))
   , AST.D () <$> genData (n-1)
   ]
 

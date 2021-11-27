@@ -82,7 +82,14 @@ desugarLet ( AST.Binding _ _ e : bs ) y =
 
 
 desugarConstant :: Constant ann -> Some (ValueOf DefaultUni)
-desugarConstant = todo
+desugarConstant =
+  \case
+    AST.I _ x -> PLC.Some (PLC.ValueOf PLC.DefaultUniInteger x)
+    AST.S _ x -> PLC.Some (PLC.ValueOf PLC.DefaultUniByteString x)
+    AST.T _ x -> PLC.Some (PLC.ValueOf PLC.DefaultUniString x)
+    AST.U _   -> PLC.Some (PLC.ValueOf PLC.DefaultUniUnit ())
+    AST.B _ x -> PLC.Some (PLC.ValueOf PLC.DefaultUniBool x)
+    AST.D _ x -> PLC.Some (PLC.ValueOf PLC.DefaultUniData x)
 
 
 desugarBuiltin :: Builtin -> DefaultFun
@@ -137,7 +144,3 @@ desugarBuiltin =
     MkPairData -> PLC.MkPairData
     MkNilData -> PLC.MkNilData
     MkNilPairData -> PLC.MkNilPairData
-
-
-todo :: a
-todo = todo
