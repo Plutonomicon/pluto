@@ -3,7 +3,10 @@
 {-# LANGUAGE TupleSections     #-}
 
 
-module PlutusCore.Assembler.AnnDeBruijn ( annDeBruijn ) where
+module PlutusCore.Assembler.AnnDeBruijn
+  ( annDeBruijn
+  , addNameToMap
+  ) where
 
 
 import qualified Data.Map                       as Map

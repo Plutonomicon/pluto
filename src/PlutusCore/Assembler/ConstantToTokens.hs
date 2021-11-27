@@ -18,20 +18,12 @@ import qualified PlutusCore.Assembler.Types.Token as T
 constantToTokens :: Constant ann -> [T.Token]
 constantToTokens =
   \case
-    I _ x     -> [T.Integer x]
-    S _ x     -> [T.ByteString x]
-    T _ x     -> [T.Text x]
-    U _       -> [T.OpenParen, T.CloseParen]
-    B _ x     -> [T.Bool x]
-    L _ xs    -> [T.OpenBracket]
-              <> intercalate [T.Comma] (constantToTokens <$> xs)
-              <> [T.CloseBracket]
-    P _ (a,b) -> [T.OpenParen]
-              <> constantToTokens a
-              <> [T.Comma]
-              <> constantToTokens b
-              <> [T.CloseParen]
-    D _ d     -> [T.Data] <> dataToTokens d
+    I _ x -> [T.Integer x]
+    S _ x -> [T.ByteString x]
+    T _ x -> [T.Text x]
+    U _   -> [T.OpenParen, T.CloseParen]
+    B _ x -> [T.Bool x]
+    D _ d -> [T.Data] <> dataToTokens d
 
 
 dataToTokens :: Data -> [T.Token]
