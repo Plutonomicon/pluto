@@ -319,9 +319,8 @@ builtin :: Parser Token
 builtin =
   Builtin
   <$>
-  (
   choice
-  $
+  (
   try
   <$>
   [ AddInteger <$ string "AddInteger"
@@ -381,9 +380,8 @@ infixBuiltin :: Parser Token
 infixBuiltin =
   InfixBuiltin
   <$>
-  (
   choice
-  $
+  (
   try
   <$>
   [ Infix.AddInteger <$ string "+i"

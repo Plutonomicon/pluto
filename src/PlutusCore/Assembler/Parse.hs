@@ -81,8 +81,7 @@ lambdaTerm = do
   consumeExact Tok.Lambda ()
   x <- consumeVar
   consumeExact Tok.Arrow ()
-  t <- term
-  return (AST.Lambda (AST.Binding (AST.Name x) t))
+  AST.Lambda . AST.Binding (AST.Name x) <$> term
 
 
 term1 :: Parser Term
@@ -106,16 +105,14 @@ letTerm = do
   b0 <- letBinding
   bs <- many (consumeExact Tok.Semicolon () >> letBinding)
   consumeExact Tok.In ()
-  t  <- term2
-  return (AST.Let (b0:bs) t)
+  AST.Let (b0:bs) <$> term2
 
 
 letBinding :: Parser Binding
 letBinding = do
   x <- AST.Name <$> consumeVar
   consumeExact Tok.Equals ()
-  t <- term2
-  return (AST.Binding x t)
+  AST.Binding x <$> term2
 
 
 term2 :: Parser Term
