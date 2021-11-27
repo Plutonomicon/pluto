@@ -30,6 +30,6 @@ fakeSourcePos = newPos "test" 0 0
 testParseValidTokenList :: TestTree
 testParseValidTokenList =
   testProperty "parses a syntactically valid token list" . property $ do
-    n <- forAll (Gen.integral (Range.linear 0 25))
+    n <- forAll (Gen.integral (Range.linear 0 10))
     (t, tts) <- forAll (genTerm n)
     parse ((,fakeSourcePos) <$> tts) === Right (Program t)
