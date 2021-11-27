@@ -211,8 +211,8 @@ constant = do
 
 
 bool :: Parser (Constant SourcePos)
-bool = consumeExact (Tok.Bool True ) (\p -> AST.B p True)
-   <|> consumeExact (Tok.Bool False) (\p -> AST.B p False)
+bool = consumeExact (Tok.Bool True ) (`AST.B` True)
+   <|> consumeExact (Tok.Bool False) (`AST.B` False)
 
 
 integer :: Parser (Constant SourcePos)
