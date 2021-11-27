@@ -10,7 +10,7 @@ import           Data.Text                               (pack, unpack)
 import qualified PlutusCore.Data                         as Data
 import           Text.Parsec                             (Parsec, SourcePos,
                                                           getPosition, many,
-                                                          option, try)
+                                                          many1, option, try)
 import           Text.Parsec.Prim                        (token)
 import qualified Text.Parsec.Prim                        as Prim
 
@@ -85,9 +85,9 @@ lambdaTerm :: Parser (Term SourcePos)
 lambdaTerm = do
   p <- getPosition
   consumeExact_ Tok.Lambda
-  x <- consumeVar
+  xs <- many1 consumeVar
   consumeExact_ Tok.Arrow
-  AST.Lambda p . AST.Binding p (AST.Name x) <$> term
+  AST.Lambda p (AST.Name <$> xs) <$> term
 
 
 term1 :: Parser (Term SourcePos)

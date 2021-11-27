@@ -175,11 +175,11 @@ genTerm0 n = Gen.choice [genLambda (n-1), genTerm1 n]
 
 genLambda :: RecursionDepth -> Gen (Term (), [Token])
 genLambda n = do
-  x <- genName
-  (y, ts) <- genTerm n
+  xs <- Gen.list (Range.linear 1 10) genName
+  (y, yts) <- genTerm n
   return
-    ( AST.Lambda () (AST.Binding () (AST.Name x) y)
-    , [ Tok.Lambda, Tok.Var x, Tok.Arrow ] <> ts
+    ( AST.Lambda () (AST.Name <$> xs) y
+    , [Tok.Lambda] <> (Tok.Var <$> xs) <> [Tok.Arrow] <> yts
     )
 
 
