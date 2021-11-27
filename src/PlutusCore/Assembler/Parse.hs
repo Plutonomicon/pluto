@@ -86,24 +86,17 @@ lambdaTerm = do
 
 
 term1 :: Parser Term
-term1 = do
-  t0  <- term2
-  ts <- many term2
-  return $ foldl AST.Apply t0 ts
-
-
-term2 :: Parser Term
-term2 = ifTerm <|> letTerm <|> term3
+term1 = ifTerm <|> letTerm <|> term2
 
 
 ifTerm :: Parser Term
 ifTerm = do
   consumeExact Tok.If ()
-  i <- AST.IfTerm <$> term3
+  i <- AST.IfTerm <$> term2
   consumeExact Tok.Then ()
   t <- AST.ThenTerm <$> term2
   consumeExact Tok.Else ()
-  e <- AST.ElseTerm <$> term2
+  e <- AST.ElseTerm <$> term1
   return (AST.IfThenElse i t e)
 
 
@@ -113,7 +106,7 @@ letTerm = do
   b0 <- letBinding
   bs <- many (consumeExact Tok.Semicolon () >> letBinding)
   consumeExact Tok.In ()
-  t  <- term
+  t  <- term2
   return (AST.Let (b0:bs) t)
 
 
@@ -121,19 +114,19 @@ letBinding :: Parser Binding
 letBinding = do
   x <- AST.Name <$> consumeVar
   consumeExact Tok.Equals ()
-  t <- term
+  t <- term2
   return (AST.Binding x t)
 
 
-term3 :: Parser Term
-term3 = try infixApplyTerm <|> term4
+term2 :: Parser Term
+term2 = try infixApplyTerm <|> term3
 
 
 infixApplyTerm :: Parser Term
 infixApplyTerm = do
-  t0 <- AST.LeftTerm  <$> term4
+  t0 <- AST.LeftTerm  <$> term3
   op <- AST.OpTerm    <$> infixOperator
-  t1 <- AST.RightTerm <$> term4
+  t1 <- AST.RightTerm <$> term3
   return (AST.InfixApply t0 op t1)
 
 
@@ -157,6 +150,13 @@ backtickInfix = do
   return t
 
 
+term3 :: Parser Term
+term3 = do
+  t0  <- term4
+  ts <- many term4
+  return $ foldl AST.Apply t0 ts
+
+
 term4 :: Parser Term
 term4 = forceTerm <|> delayTerm <|> term5
 
@@ -170,7 +170,7 @@ delayTerm = consumeExact Tok.Delay () >> (AST.Delay <$> term4)
 
 
 term5 :: Parser Term
-term5 = varTerm <|> builtinTerm <|> errorTerm <|> parenthesizedTerm <|> constantTerm
+term5 = varTerm <|> builtinTerm <|> errorTerm <|> try parenthesizedTerm <|> constantTerm
 
 
 varTerm :: Parser Term
@@ -255,7 +255,7 @@ dataConstant = do
 
 
 dataLiteral :: Parser Data
-dataLiteral = sigmaData <|> mapData <|> integerData <|> byteStringData
+dataLiteral = sigmaData <|> listData <|> mapData <|> integerData <|> byteStringData
 
 
 sigmaData :: Parser Data
@@ -264,6 +264,10 @@ sigmaData = do
   i <- consumeInteger
   consumeExact Tok.Period ()
   Data.Constr i <$> bracketList dataLiteral
+
+
+listData :: Parser Data
+listData = Data.List <$> bracketList dataLiteral
 
 
 mapData :: Parser Data

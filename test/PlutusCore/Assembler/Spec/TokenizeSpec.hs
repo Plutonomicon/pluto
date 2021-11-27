@@ -5,6 +5,7 @@
 module PlutusCore.Assembler.Spec.TokenizeSpec ( tests ) where
 
 
+import PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Spec.Prelude
 import           PlutusCore.Assembler.Tokenize     (printToken, tokenize)
 import PlutusCore.Assembler.Spec.Gen (genText, genToken, genWhitespace)

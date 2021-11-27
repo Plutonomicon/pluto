@@ -11,7 +11,6 @@ module PlutusCore.Assembler.Spec.Gen
   , genWhitespace
   , genData
   , genConstantAST
-  , genTermAST
   , genTerm
   ) where
 
@@ -21,9 +20,10 @@ import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 import qualified PlutusCore.Data as Data
 
+import PlutusCore.Assembler.Prelude
 import PlutusCore.Assembler.Spec.Prelude
 import PlutusCore.Assembler.Types.Token (Token (..))
-import PlutusCore.Assembler.Types.AST (Data, Constant, Term, OpTerm, Binding)
+import PlutusCore.Assembler.Types.AST (Data, Constant, Term, Binding)
 import qualified PlutusCore.Assembler.Types.Constant as AST
 import qualified PlutusCore.Assembler.Types.AST as AST
 import qualified PlutusCore.Assembler.Types.Token as Tok
@@ -37,7 +37,7 @@ newtype RecursionDepth = RecursionDepth { unRecursionDepth :: Integer }
 
 
 genText :: Gen Text
-genText = Gen.text (Range.linear 0 1000) Gen.ascii
+genText = Gen.text (Range.linear 0 100) Gen.ascii
 
 
 genInteger :: Gen Integer
@@ -45,7 +45,7 @@ genInteger = Gen.integral (Range.linear (-100_000_000_000) 100_000_000_000)
 
 
 genByteString :: Gen ByteString
-genByteString = Gen.bytes (Range.linear 0 1000)
+genByteString = Gen.bytes (Range.linear 0 100)
 
 
 genToken :: Gen Token
@@ -162,45 +162,6 @@ genConstantAST n =
   ]
 
 
-genBindingAST :: RecursionDepth -> Gen Binding
-genBindingAST n = AST.Binding <$> (AST.Name <$> genName) <*> genTermAST n
-
-
-genOpTermAST :: Gen OpTerm
-genOpTermAST =
-  AST.OpTerm
-  <$> (      (AST.Builtin        <$> Gen.enumBounded)
-         <|> (AST.Var . AST.Name <$> genName)           )
-
-
-genTermAST :: RecursionDepth -> Gen Term
-genTermAST 0 =
-  Gen.choice
-  [ AST.Var . AST.Name <$> genName
-  , AST.Constant <$> genConstantAST 0
-  , AST.Builtin <$> Gen.enumBounded
-  , pure AST.Error
-  ]
-genTermAST n =
-  Gen.choice
-  [ AST.Var . AST.Name <$> genName
-  , AST.Lambda <$> genBindingAST (n-1)
-  , AST.Apply <$> genTermAST (n-1) <*> genTermAST (n-1)
-  , AST.Force <$> genTermAST (n-1)
-  , AST.Delay <$> genTermAST (n-1)
-  , AST.Constant <$> genConstantAST (n-1)
-  , AST.Builtin <$> Gen.enumBounded
-  , pure AST.Error
-  , AST.Let <$> (Gen.list (Range.linear 0 10) (genBindingAST (n-1))) <*> genTermAST (n-1)
-  , AST.IfThenElse <$> (AST.IfTerm   <$> genTermAST (n-1))
-                   <*> (AST.ThenTerm <$> genTermAST (n-1))
-                   <*> (AST.ElseTerm <$> genTermAST (n-1))
-  , AST.InfixApply <$> (AST.LeftTerm <$> genTermAST (n-1))
-                   <*> genOpTermAST
-                   <*> (AST.RightTerm <$> genTermAST (n-1))
-  ]
-
-
 -- Generates a syntactically valid token string and the term
 -- it represents.
 genTerm :: RecursionDepth -> Gen (Term, [Token])
@@ -223,22 +184,15 @@ genLambda n = do
 
 
 genTerm1 :: RecursionDepth -> Gen (Term, [Token])
-genTerm1 n = do
-  (x0, ts0) <- genTerm2 n
-  ts        <- Gen.list (Range.linear 0 10) (genTerm2 n)
-  return $ (foldl AST.Apply x0 *** foldl (<>) ts0) (unzip ts)
-
-
-genTerm2 :: RecursionDepth -> Gen (Term, [Token])
-genTerm2 0 = genTerm3 0
-genTerm2 n = Gen.choice [genIfTerm (n-1), genLetTerm (n-1), genTerm3 n]
+genTerm1 0 = genTerm2 0
+genTerm1 n = Gen.choice [genIfTerm (n-1), genLetTerm (n-1), genTerm2 n]
 
 
 genIfTerm :: RecursionDepth -> Gen (Term, [Token])
 genIfTerm n = do
-  (it, itts) <- first AST.IfTerm <$> genTerm3 n
+  (it, itts) <- first AST.IfTerm <$> genTerm2 n
   (tt, ttts) <- first AST.ThenTerm <$> genTerm2 n
-  (et, etts) <- first AST.ElseTerm <$> genTerm2 n
+  (et, etts) <- first AST.ElseTerm <$> genTerm1 n
   return
     ( AST.IfThenElse it tt et
     , [Tok.If] <> itts <> [Tok.Then] <> ttts <> [Tok.Else] <> etts
@@ -258,16 +212,16 @@ genLetTerm n = do
 genLetBinding :: RecursionDepth -> Gen (Binding, [Token])
 genLetBinding n = do
   x        <- genName
-  (t, tts) <- genTerm n
+  (t, tts) <- genTerm2 n
   return
     ( AST.Binding (AST.Name x) t
     , [Tok.Var x, Tok.Equals] <> tts
     )
 
 
-genTerm3 :: RecursionDepth -> Gen (Term, [Token])
-genTerm3 0 = genTerm4 0
-genTerm3 n = Gen.choice [genInfixApply (n-1), genTerm4 n]
+genTerm2 :: RecursionDepth -> Gen (Term, [Token])
+genTerm2 0 = genTerm3 0
+genTerm2 n = Gen.choice [genInfixApply (n-1), genTerm3 n]
 
 
 genInfixApply :: RecursionDepth -> Gen (Term, [Token])
@@ -281,8 +235,8 @@ genInfixApply n =
 
 genBuiltinInfixOpApply :: RecursionDepth -> Gen (Term, [Token])
 genBuiltinInfixOpApply n = do
-  (x, tsx) <- genTerm4 n
-  (y, tsy) <- genTerm4 n
+  (x, tsx) <- genTerm3 n
+  (y, tsy) <- genTerm3 n
   o <- Gen.enumBounded
   return ( AST.InfixApply (AST.LeftTerm x)
                           (AST.OpTerm (AST.Builtin (InfixBuiltin.toBuiltin o)))
@@ -293,8 +247,8 @@ genBuiltinInfixOpApply n = do
 
 genBuiltinBacktickInfixApply :: RecursionDepth -> Gen (Term, [Token])
 genBuiltinBacktickInfixApply n = do
-  (x, tsx) <- genTerm4 n
-  (y, tsy) <- genTerm4 n
+  (x, tsx) <- genTerm3 n
+  (y, tsy) <- genTerm3 n
   o <- Gen.enumBounded
   return ( AST.InfixApply (AST.LeftTerm x)
                           (AST.OpTerm (AST.Builtin o))
@@ -305,14 +259,21 @@ genBuiltinBacktickInfixApply n = do
 
 genVarInfixApply :: RecursionDepth -> Gen (Term, [Token])
 genVarInfixApply n = do
-  (x, tsx) <- genTerm4 n
-  (y, tsy) <- genTerm4 n
+  (x, tsx) <- genTerm3 n
+  (y, tsy) <- genTerm3 n
   o <- genName
   return ( AST.InfixApply (AST.LeftTerm x)
                           (AST.OpTerm (AST.Var (AST.Name o)))
                           (AST.RightTerm y)
          , tsx <> [Tok.Backtick, Tok.Var o, Tok.Backtick] <> tsy
          )
+
+
+genTerm3 :: RecursionDepth -> Gen (Term, [Token])
+genTerm3 n = do
+  (x0, ts0) <- genTerm4 n
+  ts        <- Gen.list (Range.linear 0 10) (genTerm4 n)
+  return $ (foldl AST.Apply x0 *** foldl (<>) ts0) (unzip ts)
 
 
 genTerm4 :: RecursionDepth -> Gen (Term, [Token])
@@ -327,13 +288,13 @@ genTerm4 n =
 
 genForce :: RecursionDepth -> Gen (Term, [Token])
 genForce n = do
-  (x, ts) <- genTerm5 n
+  (x, ts) <- genTerm4 n
   return (AST.Force x, [Tok.Force] <> ts)
 
 
 genDelay :: RecursionDepth -> Gen (Term, [Token])
 genDelay n = do
-  (x, ts) <- genTerm5 n
+  (x, ts) <- genTerm4 n
   return (AST.Delay x, [Tok.Delay] <> ts)
 
 
