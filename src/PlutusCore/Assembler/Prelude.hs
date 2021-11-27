@@ -27,9 +27,9 @@ import           Prelude             (Bool (False, True), Bounded, Char,
                                       Maybe (Just, Nothing),
                                       Monad (return, (>>=)),
                                       Num ((*), (+), (-)), Ord, Real,
-                                      Show (show), String, foldl, fst, negate,
-                                      snd, ($), (&&), (.), (/=), (<$), (<$>),
-                                      (<=), (<>), (==), (>>), (||))
+                                      Show (show), String, const, foldl, fst,
+                                      negate, snd, ($), (&&), (.), (/=), (<$),
+                                      (<$>), (<=), (<>), (==), (>>), (||))
 
 
 (<$$>) :: ( Functor f, Functor g ) => (a -> b) -> f (g a) -> f (g b)

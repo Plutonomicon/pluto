@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 
@@ -24,52 +25,52 @@ import           PlutusCore.Assembler.Types.Constant (Constant (..))
 import           PlutusCore.Data                     (Data)
 
 
-newtype Program = Program { unProgram :: Term }
-  deriving (Eq, Show)
+newtype Program ann = Program { unProgram :: Term ann }
+  deriving (Eq, Show, Functor)
 
 
 newtype Name = Name { getName :: Text }
   deriving (Eq, Show)
 
 
-data Term =
-    Var Name
-  | Lambda Binding
-  | Apply Term Term
-  | Force Term
-  | Delay Term
-  | Constant Constant
-  | Builtin Builtin
-  | Error
-  | Let [Binding] Term
-  | IfThenElse IfTerm ThenTerm ElseTerm
-  | InfixApply LeftTerm OpTerm RightTerm
-  deriving (Eq, Show)
+data Term ann =
+    Var ann Name
+  | Lambda ann (Binding ann)
+  | Apply ann (Term ann) (Term ann)
+  | Force ann (Term ann)
+  | Delay ann (Term ann)
+  | Constant ann (Constant ann)
+  | Builtin ann Builtin
+  | Error ann
+  | Let ann [Binding ann] (Term ann)
+  | IfThenElse ann (IfTerm ann) (ThenTerm ann) (ElseTerm ann)
+  | InfixApply ann (LeftTerm ann) (OpTerm ann) (RightTerm ann)
+  deriving (Eq, Show, Functor)
 
 
-newtype IfTerm = IfTerm Term
-  deriving (Eq, Show)
+newtype IfTerm ann = IfTerm (Term ann)
+  deriving (Eq, Show, Functor)
 
 
-newtype ThenTerm = ThenTerm Term
-  deriving (Eq, Show)
+newtype ThenTerm ann = ThenTerm (Term ann)
+  deriving (Eq, Show, Functor)
 
 
-newtype ElseTerm = ElseTerm Term
-  deriving (Eq, Show)
+newtype ElseTerm ann = ElseTerm (Term ann)
+  deriving (Eq, Show, Functor)
 
 
-newtype LeftTerm = LeftTerm Term
-  deriving (Eq, Show)
+newtype LeftTerm ann = LeftTerm (Term ann)
+  deriving (Eq, Show, Functor)
 
 
-newtype RightTerm = RightTerm Term
-  deriving (Eq, Show)
+newtype RightTerm ann = RightTerm (Term ann)
+  deriving (Eq, Show, Functor)
 
 
-newtype OpTerm = OpTerm Term
-  deriving (Eq, Show)
+newtype OpTerm ann = OpTerm (Term ann)
+  deriving (Eq, Show, Functor)
 
 
-data Binding = Binding Name Term
-  deriving (Eq, Show)
+data Binding ann = Binding ann Name (Term ann)
+  deriving (Eq, Show, Functor)

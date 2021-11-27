@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 
@@ -10,13 +11,13 @@ import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Data              (Data)
 
 
-data Constant =
-    I Integer
-  | S ByteString
-  | T Text
-  | U
-  | B Bool
-  | L [Constant]
-  | P (Constant, Constant)
-  | D Data
-  deriving (Eq, Show)
+data Constant ann =
+    I ann Integer
+  | S ann ByteString
+  | T ann Text
+  | U ann
+  | B ann Bool
+  | L ann [Constant ann]
+  | P ann (Constant ann, Constant ann)
+  | D ann Data
+  deriving (Eq, Show, Functor)
