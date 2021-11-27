@@ -8,8 +8,9 @@ module PlutusCore.Assembler.Parse ( parse ) where
 import           Data.Either.Extra                       (mapLeft)
 import           Data.Text                               (pack, unpack)
 import qualified PlutusCore.Data                         as Data
-import           Text.Parsec                             (Parsec, SourcePos, getPosition,
-                                                          many, option, try)
+import           Text.Parsec                             (Parsec, SourcePos,
+                                                          getPosition, many,
+                                                          option, try)
 import           Text.Parsec.Prim                        (token)
 import qualified Text.Parsec.Prim                        as Prim
 
