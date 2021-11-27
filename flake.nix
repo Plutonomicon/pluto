@@ -1,5 +1,5 @@
 {
-  nixConfig.bash-prompt = "[nix-develop-plutus-core-assembler:] ";
+  nixConfig.bash-prompt = "[nix-develop-pluto:] ";
   description = "A very basic flake";
   inputs.haskellNix.url = "github:input-output-hk/haskell.nix";
   inputs.nixpkgs.follows = "haskellNix/nixpkgs-unstable";
@@ -15,7 +15,7 @@
           haskellNix.overlay
           (final: prev: {
             # This overlay adds our project to pkgs
-            plutus-core-assembler =
+            pluto =
               final.haskell-nix.project' {
                 src = ./.;
                 compiler-nix-name = "ghc8107";
@@ -50,6 +50,6 @@
           })
         ];
         pkgs = import nixpkgs { inherit system overlays; inherit (haskellNix) config; };
-        flake = pkgs.plutus-core-assembler.flake { };
+        flake = pkgs.pluto.flake { };
       in flake);
 }
