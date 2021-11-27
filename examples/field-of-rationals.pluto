@@ -4,6 +4,8 @@ let
   over = MkCons;
   num = FstPair;
   denom = SndPair;
+  signum = (\x -> let a = num x in (if a <i 0 then -1 else if 0 <i a then 1 else 0));
+  abs = todo;
   norm = todo;
   plus = ( \x y ->
            ( let a = num x;
@@ -23,7 +25,7 @@ let
           );
   zero = 0 `MkCons` 1;
   one = 1 `MkCons` 1;
-  negate = ( \x -> (num x *i -1) `over` denom x );
-  reciprocal = todo
+  negate = (\x -> (num x *i -1) `over` denom x);
+  reciprocal = (\x -> let a = num x; b = denom x in (b *i signum a) `over` abs a)
 in
   plus `MkCons` ( times `MkCons` ( negate `MkCons` ( reciprocal `MkCons` ( one `MkCons` ( zero `MkCons` NullList ) ) ) ) )
