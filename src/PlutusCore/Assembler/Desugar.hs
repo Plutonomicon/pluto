@@ -61,7 +61,12 @@ desugarTerm =
                        <$> desugarTerm i)
                  <*> desugarTerm t )
         <*> desugarTerm e
-    _ -> todo
+    AST.InfixApply _ (AST.LeftTerm l) (AST.OpTerm o) (AST.RightTerm r) ->
+      UPLC.Apply ()
+        <$> ( UPLC.Apply ()
+                <$> desugarTerm o
+                <*> desugarTerm l )
+        <*> desugarTerm r
 
 
 desugarLet :: [Binding (SourcePos, Map Name DeBruijn)] -> Term (SourcePos, Map Name DeBruijn) -> Either Text UnsweetTerm
