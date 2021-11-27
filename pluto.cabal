@@ -12,6 +12,7 @@ library
     PlutusCore.Assembler.AnnDeBruijn
     PlutusCore.Assembler.ConstantToTokens
     PlutusCore.Assembler.Desugar
+    PlutusCore.Assembler.EntryPoint
     PlutusCore.Assembler.Parse
     PlutusCore.Assembler.Prelude
     PlutusCore.Assembler.Tokenize
@@ -36,6 +37,7 @@ library
     lens,
     text -any,
     mtl,
+    optparse-applicative,
     parsec,
     playground-common,
     plutus-pab,
@@ -52,6 +54,51 @@ library
     cardano-ledger-alonzo -any
 
   hs-source-dirs: src
+  default-language: Haskell2010
+  ghc-options:
+          -- See Plutus Tx readme
+          -Wall -Werror -Wcompat -fwarn-redundant-constraints -fwarn-incomplete-uni-patterns
+          -fwarn-tabs -fwarn-incomplete-record-updates -fwarn-identities -Wmissing-export-lists
+          -fobject-code -fno-ignore-interface-pragmas -fno-omit-interface-pragmas -fno-strictness -fno-ignore-interface-pragmas -fno-specialise
+
+
+executable pluto
+  main-is: Main.hs
+
+  hs-source-dirs: app
+
+  build-depends:
+    base >= 4.9 && < 5,
+    aeson,
+    attoparsec,
+    bytestring,
+    containers,
+    either,
+    extra,
+    generic-lens,
+    ghc-prim,
+    hedgehog -any,
+    hex-text,
+    lens,
+    text -any,
+    mtl,
+    optparse-applicative,
+    parsec,
+    playground-common,
+    plutus-pab,
+    plutus-core,
+    plutus-contract,
+    plutus-tx-plugin,
+    plutus-tx,
+    plutus-ledger,
+    plutus-ledger-api,
+    tasty -any,
+    tasty-hedgehog -any,
+    cardano-api -any,
+    serialise -any,
+    cardano-ledger-alonzo -any,
+
+    pluto
   default-language: Haskell2010
   ghc-options:
           -- See Plutus Tx readme
