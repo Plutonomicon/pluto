@@ -12,18 +12,24 @@ module PlutusCore.Assembler.Types.AST
   , RightTerm (..)
   , OpTerm (..)
   , Binding (..)
+  , Constant (..)
+  , Builtin
+  , Data
   ) where
 
 
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Types.Builtin  (Builtin)
-import           PlutusCore.Assembler.Types.Constant (Constant)
+import           PlutusCore.Assembler.Types.Constant (Constant (..))
+import           PlutusCore.Data                     (Data)
 
 
 newtype Program = Program { unProgram :: Term }
+  deriving (Eq, Show)
 
 
 newtype Name = Name { getName :: Text }
+  deriving (Eq, Show)
 
 
 data Term =
@@ -38,24 +44,32 @@ data Term =
   | Let [Binding] Term
   | IfThenElse IfTerm ThenTerm ElseTerm
   | InfixApply LeftTerm OpTerm RightTerm
+  deriving (Eq, Show)
 
 
 newtype IfTerm = IfTerm Term
+  deriving (Eq, Show)
 
 
 newtype ThenTerm = ThenTerm Term
+  deriving (Eq, Show)
 
 
 newtype ElseTerm = ElseTerm Term
+  deriving (Eq, Show)
 
 
 newtype LeftTerm = LeftTerm Term
+  deriving (Eq, Show)
 
 
 newtype RightTerm = RightTerm Term
+  deriving (Eq, Show)
 
 
 newtype OpTerm = OpTerm Term
+  deriving (Eq, Show)
 
 
 data Binding = Binding Name Term
+  deriving (Eq, Show)

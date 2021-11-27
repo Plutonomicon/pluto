@@ -11,7 +11,7 @@ import           PlutusCore.Assembler.Types.InfixBuiltin (InfixBuiltin)
 
 data Token = Var Text | Lambda | Arrow | Force | Delay | OpenParen | CloseParen | Error
            | Integer Integer | ByteString ByteString | Text Text | Bool Bool
-           | OpenBracket | CloseBracket | Comma | OpenBrace | CloseBrace
+           | OpenBracket | CloseBracket | Comma | Period | OpenBrace | CloseBrace
            | Data | Sigma | Equals | Builtin Builtin | InfixBuiltin InfixBuiltin
-           | Let | Semicolon | In | If | Then | Else
+           | Let | Semicolon | In | If | Then | Else | Backtick
   deriving (Eq, Show)

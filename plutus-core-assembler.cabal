@@ -9,11 +9,14 @@ maintainer:    ryanmatovu@gmail.com
 
 library
   exposed-modules:
+    PlutusCore.Assembler.ConstantToTokens
+    PlutusCore.Assembler.Parse
     PlutusCore.Assembler.Prelude
     PlutusCore.Assembler.Tokenize
     PlutusCore.Assembler.Types.AST
     PlutusCore.Assembler.Types.Builtin
     PlutusCore.Assembler.Types.Constant
+    PlutusCore.Assembler.Types.ErrorMessage
     PlutusCore.Assembler.Types.InfixBuiltin
     PlutusCore.Assembler.Types.Token
   build-depends:
@@ -31,6 +34,7 @@ library
     lens,
     text -any,
     mtl,
+    parsec,
     playground-common,
     plutus-pab,
     plutus-core,
@@ -59,7 +63,9 @@ test-suite spec
   main-is: Spec.hs
 
   other-modules:
+    PlutusCore.Assembler.Spec.Gen
     PlutusCore.Assembler.Spec.Prelude
+    PlutusCore.Assembler.Spec.ParseSpec
     PlutusCore.Assembler.Spec.TokenizeSpec
 
   build-depends:
@@ -76,6 +82,7 @@ test-suite spec
     lens,
     text -any,
     mtl,
+    parsec,
     playground-common,
     plutus-pab,
     plutus-core,
