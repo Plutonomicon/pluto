@@ -1,19 +1,19 @@
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections     #-}
 
 
 module PlutusCore.Assembler.Spec.ParseSpec ( tests ) where
 
 
-import qualified Hedgehog.Gen as Gen
-import qualified Hedgehog.Range as Range
-import Text.Parsec.Pos (SourcePos, newPos)
+import qualified Hedgehog.Gen                      as Gen
+import qualified Hedgehog.Range                    as Range
+import           Text.Parsec.Pos                   (SourcePos, newPos)
 
-import PlutusCore.Assembler.Prelude
-import PlutusCore.Assembler.Spec.Prelude
-import PlutusCore.Assembler.Spec.Gen (genTerm)
-import PlutusCore.Assembler.Parse (parse)
-import PlutusCore.Assembler.Types.AST (Program (..))
+import           PlutusCore.Assembler.Parse        (parse)
+import           PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Spec.Gen     (genTerm)
+import           PlutusCore.Assembler.Spec.Prelude
+import           PlutusCore.Assembler.Types.AST    (Program (..))
 
 
 tests :: TestTree

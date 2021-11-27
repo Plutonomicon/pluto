@@ -8,9 +8,9 @@ import           Test.Tasty                             (defaultMain,
                                                          localOption)
 import           Test.Tasty.Hedgehog                    (HedgehogTestLimit (..))
 
-import PlutusCore.Assembler.Prelude
-import           PlutusCore.Assembler.Spec.Prelude
+import           PlutusCore.Assembler.Prelude
 import qualified PlutusCore.Assembler.Spec.ParseSpec    as Parse
+import           PlutusCore.Assembler.Spec.Prelude
 import qualified PlutusCore.Assembler.Spec.TokenizeSpec as Tokenize
 
 
@@ -20,7 +20,7 @@ main = defaultMain tests
 
 -- Number of successful tests for each Hedgehog property.
 limit :: HedgehogTestLimit
-limit = HedgehogTestLimit (Just 1000)
+limit = HedgehogTestLimit (Just 100000)
 
 
 tests :: TestTree

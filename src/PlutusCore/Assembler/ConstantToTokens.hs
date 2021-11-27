@@ -1,16 +1,16 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
 
 module PlutusCore.Assembler.ConstantToTokens ( constantToTokens ) where
 
 
-import qualified PlutusCore.Data as Data
-import Data.List (intercalate)
+import           Data.List                        (intercalate)
+import qualified PlutusCore.Data                  as Data
 
-import PlutusCore.Assembler.Types.AST (Constant (..), Data)
+import           PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Types.AST   (Constant (..), Data)
 import qualified PlutusCore.Assembler.Types.Token as T
-import PlutusCore.Assembler.Prelude
 
 
 -- Every Constant has a unique constant representation as tokens,

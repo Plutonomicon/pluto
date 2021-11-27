@@ -1,7 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE NumericUnderscores #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NoImplicitPrelude          #-}
+{-# LANGUAGE NumericUnderscores         #-}
+{-# LANGUAGE OverloadedStrings          #-}
 
 
 module PlutusCore.Assembler.Spec.Gen
@@ -15,20 +15,21 @@ module PlutusCore.Assembler.Spec.Gen
   ) where
 
 
-import Data.List (intercalate)
-import qualified Hedgehog.Gen as Gen
-import qualified Hedgehog.Range as Range
-import qualified PlutusCore.Data as Data
+import           Data.List                               (intercalate)
+import qualified Hedgehog.Gen                            as Gen
+import qualified Hedgehog.Range                          as Range
+import qualified PlutusCore.Data                         as Data
 
-import PlutusCore.Assembler.Prelude
-import PlutusCore.Assembler.Spec.Prelude
-import PlutusCore.Assembler.Types.Token (Token (..))
-import PlutusCore.Assembler.Types.AST (Data, Constant, Term, Binding)
-import qualified PlutusCore.Assembler.Types.Constant as AST
-import qualified PlutusCore.Assembler.Types.AST as AST
-import qualified PlutusCore.Assembler.Types.Token as Tok
+import           PlutusCore.Assembler.ConstantToTokens   (constantToTokens)
+import           PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Spec.Prelude
+import           PlutusCore.Assembler.Types.AST          (Binding, Constant,
+                                                          Data, Term)
+import qualified PlutusCore.Assembler.Types.AST          as AST
+import qualified PlutusCore.Assembler.Types.Constant     as AST
 import qualified PlutusCore.Assembler.Types.InfixBuiltin as InfixBuiltin
-import PlutusCore.Assembler.ConstantToTokens (constantToTokens)
+import           PlutusCore.Assembler.Types.Token        (Token (..))
+import qualified PlutusCore.Assembler.Types.Token        as Tok
 
 
 -- Passed to a generator, indicates the maximum recursion depth its children should have.
