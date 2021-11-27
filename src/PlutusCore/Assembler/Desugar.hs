@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -6,20 +6,22 @@
 module PlutusCore.Assembler.Desugar ( desugar ) where
 
 
-import Text.Parsec.Pos (SourcePos)
-import PlutusCore.DeBruijn (DeBruijn (..), Index (..))
-import PlutusCore.Default (Some, ValueOf, DefaultUni, DefaultFun)
-import qualified UntypedPlutusCore.Core.Type as UPLC
-import qualified PlutusCore.Core as PLC
-import qualified Data.Map as Map
-import qualified Data.Text as Text
-import qualified PlutusCore.Default as PLC
+import qualified Data.Map                           as Map
+import qualified Data.Text                          as Text
+import qualified PlutusCore.Core                    as PLC
+import           PlutusCore.DeBruijn                (DeBruijn (..), Index (..))
+import           PlutusCore.Default                 (DefaultFun, DefaultUni,
+                                                     Some, ValueOf)
+import qualified PlutusCore.Default                 as PLC
+import           Text.Parsec.Pos                    (SourcePos)
+import qualified UntypedPlutusCore.Core.Type        as UPLC
 
-import PlutusCore.Assembler.Prelude
-import PlutusCore.Assembler.Types.AST (Program, Term, Name, Constant, Builtin, Binding)
-import qualified PlutusCore.Assembler.Types.AST as AST
-import PlutusCore.Assembler.Types.Builtin (Builtin (..))
-import PlutusCore.Assembler.AnnDeBruijn (addNameToMap)
+import           PlutusCore.Assembler.AnnDeBruijn   (addNameToMap)
+import           PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Types.AST     (Binding, Builtin, Constant,
+                                                     Name, Program, Term)
+import qualified PlutusCore.Assembler.Types.AST     as AST
+import           PlutusCore.Assembler.Types.Builtin (Builtin (..))
 
 
 type UnsweetProgram = UPLC.Program DeBruijn DefaultUni DefaultFun ()
@@ -95,52 +97,52 @@ desugarConstant =
 desugarBuiltin :: Builtin -> DefaultFun
 desugarBuiltin =
   \case
-    AddInteger -> PLC.AddInteger
-    SubtractInteger -> PLC.SubtractInteger
-    MultiplyInteger -> PLC.MultiplyInteger
-    DivideInteger -> PLC.DivideInteger
-    QuotientInteger -> PLC.QuotientInteger
-    RemainderInteger -> PLC.RemainderInteger
-    ModInteger -> PLC.ModInteger
-    EqualsInteger -> PLC.EqualsInteger
-    LessThanInteger -> PLC.LessThanInteger
-    LessThanEqualsInteger -> PLC.LessThanEqualsInteger
-    AppendByteString -> PLC.AppendByteString
-    ConsByteString -> PLC.ConsByteString
-    SliceByteString -> PLC.SliceByteString
-    LengthByteString -> PLC.LengthOfByteString
-    IndexByteString -> PLC.IndexByteString
-    EqualsByteString -> PLC.EqualsByteString
-    LessThanByteString -> PLC.LessThanByteString
+    AddInteger              -> PLC.AddInteger
+    SubtractInteger         -> PLC.SubtractInteger
+    MultiplyInteger         -> PLC.MultiplyInteger
+    DivideInteger           -> PLC.DivideInteger
+    QuotientInteger         -> PLC.QuotientInteger
+    RemainderInteger        -> PLC.RemainderInteger
+    ModInteger              -> PLC.ModInteger
+    EqualsInteger           -> PLC.EqualsInteger
+    LessThanInteger         -> PLC.LessThanInteger
+    LessThanEqualsInteger   -> PLC.LessThanEqualsInteger
+    AppendByteString        -> PLC.AppendByteString
+    ConsByteString          -> PLC.ConsByteString
+    SliceByteString         -> PLC.SliceByteString
+    LengthByteString        -> PLC.LengthOfByteString
+    IndexByteString         -> PLC.IndexByteString
+    EqualsByteString        -> PLC.EqualsByteString
+    LessThanByteString      -> PLC.LessThanByteString
     LessThanEqualByteString -> PLC.LessThanEqualsByteString
-    Sha2_256 -> PLC.Sha2_256
-    Sha3_256 -> PLC.Sha3_256
-    Blake2b_256 -> PLC.Blake2b_256
-    VerifySignature -> PLC.VerifySignature
-    AppendString -> PLC.AppendString
-    EqualsString -> PLC.EqualsString
-    EncodeUtf8 -> PLC.EncodeUtf8
-    DecodeUtf8 -> PLC.DecodeUtf8
-    IfThenElse -> PLC.IfThenElse
-    ChooseUnit -> PLC.ChooseUnit
-    Trace -> PLC.Trace
-    FstPair -> PLC.FstPair
-    SndPair -> PLC.SndPair
-    ChooseList -> PLC.ChooseList
-    MkCons -> PLC.MkCons
-    HeadList -> PLC.HeadList
-    TailList -> PLC.TailList
-    NullList -> PLC.NullList
-    ChooseData -> PLC.ChooseData
-    ConstrData -> PLC.ConstrData
-    MapData -> PLC.MapData
-    ListData -> PLC.ListData
-    IData -> PLC.IData
-    BData -> PLC.BData
-    UnConstrData -> PLC.UnConstrData
-    UnMapData -> PLC.UnMapData
-    UnBData -> PLC.UnBData
-    EqualsData -> PLC.EqualsData
-    MkPairData -> PLC.MkPairData
-    MkNilData -> PLC.MkNilData
-    MkNilPairData -> PLC.MkNilPairData
+    Sha2_256                -> PLC.Sha2_256
+    Sha3_256                -> PLC.Sha3_256
+    Blake2b_256             -> PLC.Blake2b_256
+    VerifySignature         -> PLC.VerifySignature
+    AppendString            -> PLC.AppendString
+    EqualsString            -> PLC.EqualsString
+    EncodeUtf8              -> PLC.EncodeUtf8
+    DecodeUtf8              -> PLC.DecodeUtf8
+    IfThenElse              -> PLC.IfThenElse
+    ChooseUnit              -> PLC.ChooseUnit
+    Trace                   -> PLC.Trace
+    FstPair                 -> PLC.FstPair
+    SndPair                 -> PLC.SndPair
+    ChooseList              -> PLC.ChooseList
+    MkCons                  -> PLC.MkCons
+    HeadList                -> PLC.HeadList
+    TailList                -> PLC.TailList
+    NullList                -> PLC.NullList
+    ChooseData              -> PLC.ChooseData
+    ConstrData              -> PLC.ConstrData
+    MapData                 -> PLC.MapData
+    ListData                -> PLC.ListData
+    IData                   -> PLC.IData
+    BData                   -> PLC.BData
+    UnConstrData            -> PLC.UnConstrData
+    UnMapData               -> PLC.UnMapData
+    UnBData                 -> PLC.UnBData
+    EqualsData              -> PLC.EqualsData
+    MkPairData              -> PLC.MkPairData
+    MkNilData               -> PLC.MkNilData
+    MkNilPairData           -> PLC.MkNilPairData

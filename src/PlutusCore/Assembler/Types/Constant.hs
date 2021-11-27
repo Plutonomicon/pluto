@@ -24,9 +24,9 @@ data Constant ann =
 instance Foldable Constant where
   foldMap f =
     \case
-      I a _      -> f a
-      S a _      -> f a
-      T a _      -> f a
-      U a        -> f a
-      B a _      -> f a
-      D a _      -> f a
+      I a _ -> f a
+      S a _ -> f a
+      T a _ -> f a
+      U a   -> f a
+      B a _ -> f a
+      D a _ -> f a
