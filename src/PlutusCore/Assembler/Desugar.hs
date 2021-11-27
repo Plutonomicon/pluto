@@ -53,7 +53,7 @@ desugarTerm =
     AST.Constant _ x -> pure (UPLC.Constant () (desugarConstant x))
     AST.Builtin _ f -> pure (UPLC.Builtin () (desugarBuiltin f))
     AST.Error _ -> pure (UPLC.Error ())
-    AST.Let _ bs x -> desugarLet bs x
+    AST.Let _ bs x -> desugarLet (reverse bs) x
     AST.IfThenElse _ (AST.IfTerm i) (AST.ThenTerm t) (AST.ElseTerm e) ->
       UPLC.Apply ()
         <$> ( UPLC.Apply ()
@@ -69,9 +69,15 @@ desugarTerm =
         <*> desugarTerm r
 
 
+-- We pass in the bindings innermost first instead of the usual outermost
+-- first convention in order to simplify the recursion.
 desugarLet :: [Binding (SourcePos, Map Name DeBruijn)] -> Term (SourcePos, Map Name DeBruijn) -> Either Text UnsweetTerm
-desugarLet = todo
-
+desugarLet [] y = desugarTerm y -- allow this case to make the recursion simpler
+desugarLet ( AST.Binding _ _ e : bs ) y =
+  UPLC.Apply ()
+  <$> ( UPLC.LamAbs () (DeBruijn (Index 0)) -- TODO: is this right?
+        <$> desugarLet bs y )
+  <*> desugarTerm e
 
 
 desugarConstant :: Constant ann -> Some (ValueOf DefaultUni)
