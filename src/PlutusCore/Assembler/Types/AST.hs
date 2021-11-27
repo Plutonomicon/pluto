@@ -35,7 +35,7 @@ newtype Name = Name { getName :: Text }
 
 data Term ann =
     Var ann Name
-  | Lambda ann (Binding ann)
+  | Lambda ann [Name] (Term ann)
   | Apply ann (Term ann) (Term ann)
   | Force ann (Term ann)
   | Delay ann (Term ann)
