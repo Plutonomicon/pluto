@@ -6,22 +6,26 @@
 module PlutusCore.Assembler.Desugar ( desugar ) where
 
 
-import qualified Data.Map                           as Map
-import qualified Data.Text                          as Text
-import qualified PlutusCore.Core                    as PLC
-import           PlutusCore.DeBruijn                (DeBruijn (..), Index (..))
-import           PlutusCore.Default                 (DefaultFun, DefaultUni,
-                                                     Some, ValueOf)
-import qualified PlutusCore.Default                 as PLC
-import           Text.Parsec.Pos                    (SourcePos)
-import qualified UntypedPlutusCore.Core.Type        as UPLC
+import qualified Data.Map                                as Map
+import qualified Data.Text                               as Text
+import qualified PlutusCore.Core                         as PLC
+import           PlutusCore.DeBruijn                     (DeBruijn (..),
+                                                          Index (..))
+import           PlutusCore.Default                      (DefaultFun,
+                                                          DefaultUni, Some,
+                                                          ValueOf)
+import qualified PlutusCore.Default                      as PLC
+import           Text.Parsec.Pos                         (SourcePos)
+import qualified UntypedPlutusCore.Core.Type             as UPLC
 
-import           PlutusCore.Assembler.AnnDeBruijn   (addNameToMap)
+import           PlutusCore.Assembler.AnnDeBruijn        (addNameToMap)
 import           PlutusCore.Assembler.Prelude
-import           PlutusCore.Assembler.Types.AST     (Binding, Builtin, Constant,
-                                                     Name, Program, Term)
-import qualified PlutusCore.Assembler.Types.AST     as AST
-import           PlutusCore.Assembler.Types.Builtin (Builtin (..))
+import           PlutusCore.Assembler.Types.AST          (Binding, Builtin,
+                                                          Constant, Name,
+                                                          Program, Term)
+import qualified PlutusCore.Assembler.Types.AST          as AST
+import           PlutusCore.Assembler.Types.Builtin      (Builtin (..))
+import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
 
 
 type UnsweetProgram = UPLC.Program DeBruijn DefaultUni DefaultFun ()
@@ -29,20 +33,20 @@ type UnsweetTerm = UPLC.Term DeBruijn DefaultUni DefaultFun ()
 
 
 desugar :: Program (SourcePos, Map Name DeBruijn)
-        -> Either Text UnsweetProgram
+        -> Either ErrorMessage UnsweetProgram
 desugar (AST.Program x) =
   UPLC.Program () (PLC.defaultVersion ()) <$> desugarTerm x
 
 
 desugarTerm :: Term (SourcePos, Map Name DeBruijn)
-            -> Either Text UnsweetTerm
+            -> Either ErrorMessage UnsweetTerm
 desugarTerm =
   \case
     AST.Var (p, m) x ->
       case Map.lookup x m of
         Just i -> pure (UPLC.Var () i)
-        Nothing -> Left ("undefined variable name " <> AST.getName x <> " at source position " <> Text.pack (show p))
-    AST.Lambda (p, _) [] _ -> Left ("lambda with no names at source position " <> Text.pack (show p))
+        Nothing -> Left (ErrorMessage $ "undefined variable name " <> AST.getName x <> " at source position " <> Text.pack (show p))
+    AST.Lambda (p, _) [] _ -> Left (ErrorMessage $ "lambda with no names at source position " <> Text.pack (show p))
     AST.Lambda _ [_] y ->
       UPLC.LamAbs () (DeBruijn (Index 0)) -- TODO: is this right?
         <$> desugarTerm y
@@ -74,7 +78,7 @@ desugarTerm =
 
 -- We pass in the bindings innermost first instead of the usual outermost
 -- first convention in order to simplify the recursion.
-desugarLet :: [Binding (SourcePos, Map Name DeBruijn)] -> Term (SourcePos, Map Name DeBruijn) -> Either Text UnsweetTerm
+desugarLet :: [Binding (SourcePos, Map Name DeBruijn)] -> Term (SourcePos, Map Name DeBruijn) -> Either ErrorMessage UnsweetTerm
 desugarLet [] y = desugarTerm y -- allow this case to make the recursion simpler
 desugarLet ( AST.Binding _ _ e : bs ) y =
   UPLC.Apply ()
