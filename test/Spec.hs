@@ -27,7 +27,7 @@ tests :: TestTree
 tests =
   localOption limit
   $
-  testGroup "plutus-core-assembler"
+  testGroup "pluto"
   [ Parse.tests
   , Tokenize.tests
   ]

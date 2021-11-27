@@ -1,5 +1,5 @@
 cabal-version:      2.4
-name:               plutus-core-assembler
+name:               pluto
 version:            0.1.0.0
 license: NONE
 license-files: LICENSE
@@ -97,7 +97,7 @@ test-suite spec
     serialise -any,
     cardano-ledger-alonzo -any,
 
-    plutus-core-assembler
+    pluto
 
   hs-source-dirs: test
   default-language: Haskell2010
