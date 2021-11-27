@@ -1,6 +1,6 @@
--- This is a toy example: the field of rational numbers (guaranteed not to work).
+-- This is a toy example: the field of rational numbers (most likely broken).
 let
-  todo = Error;
+  fix = (\f -> (\x -> f (x x)) (\x -> f (x x)));
   over = MkCons;
   num = FstPair;
   denom = SndPair;
@@ -8,7 +8,12 @@ let
   signum = (\x -> signumInteger (num x));
   abs = (\x -> let a = num x; b = denom x in (if a <i 0 then (a *i -1) `over` b else x));
   normSigns = (\x -> let a = num x; b = denom x in (a *i signumInteger b) `over` (abs b));
-  norm = todo;
+  minInteger = (\a b -> if a <i b then a else b);
+  maxInteger = (\a b -> if a <i b then b else a);
+  gcd = (fix (\gcd a b -> let c = minInteger a b; d = maxInteger a b
+                          in (if d ==i 0 then c else gcd c (d %i c))));
+  norm = (\x0 -> let x1 = normSigns x0; a = num x1; b = denom x1; g = gcd a b
+                 in (a /i g) `over` (b /i g));
   plus = ( \x y ->
            ( let a = num x;
                  b = denom x;
