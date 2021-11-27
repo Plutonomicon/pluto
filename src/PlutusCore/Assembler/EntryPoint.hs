@@ -4,14 +4,16 @@
 module PlutusCore.Assembler.EntryPoint (main) where
 
 
-import Data.Text (pack, unpack)
-import System.IO (FilePath, putStrLn, getContents, readFile, writeFile)
-import Text.Hex (encodeHex)
-import qualified Options.Applicative as O
+import           Data.Text                               (pack, unpack)
+import qualified Options.Applicative                     as O
+import           System.IO                               (FilePath, getContents,
+                                                          putStrLn, readFile,
+                                                          writeFile)
+import           Text.Hex                                (encodeHex)
 
-import PlutusCore.Assembler.Prelude
-import PlutusCore.Assembler.Assemble (assemble)
-import PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
+import           PlutusCore.Assembler.Assemble           (assemble)
+import           PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
 
 
 newtype InputFilePath = InputFilePath FilePath
@@ -63,7 +65,7 @@ runCommand (Command mInPath mOutPath) = do
 
 
 getSourceCode :: Maybe InputFilePath -> IO Text
-getSourceCode Nothing = pack <$> getContents
+getSourceCode Nothing                     = pack <$> getContents
 getSourceCode (Just (InputFilePath path)) = pack <$> readFile path
 
 

@@ -4,4 +4,4 @@
 module Main (main) where
 
 
-import PlutusCore.Assembler.EntryPoint (main)
+import           PlutusCore.Assembler.EntryPoint (main)

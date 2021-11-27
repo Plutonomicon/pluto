@@ -6,23 +6,26 @@
 module PlutusCore.Assembler.Desugar ( desugar ) where
 
 
-import qualified Data.Map                           as Map
-import qualified Data.Text                          as Text
-import qualified PlutusCore.Core                    as PLC
-import           PlutusCore.DeBruijn                (DeBruijn (..), Index (..))
-import           PlutusCore.Default                 (DefaultFun, DefaultUni,
-                                                     Some, ValueOf)
-import qualified PlutusCore.Default                 as PLC
-import           Text.Parsec.Pos                    (SourcePos)
-import qualified UntypedPlutusCore.Core.Type        as UPLC
+import qualified Data.Map                                as Map
+import qualified Data.Text                               as Text
+import qualified PlutusCore.Core                         as PLC
+import           PlutusCore.DeBruijn                     (DeBruijn (..),
+                                                          Index (..))
+import           PlutusCore.Default                      (DefaultFun,
+                                                          DefaultUni, Some,
+                                                          ValueOf)
+import qualified PlutusCore.Default                      as PLC
+import           Text.Parsec.Pos                         (SourcePos)
+import qualified UntypedPlutusCore.Core.Type             as UPLC
 
-import           PlutusCore.Assembler.AnnDeBruijn   (addNameToMap)
+import           PlutusCore.Assembler.AnnDeBruijn        (addNameToMap)
 import           PlutusCore.Assembler.Prelude
-import           PlutusCore.Assembler.Types.AST     (Binding, Builtin, Constant,
-                                                     Name, Program, Term)
-import qualified PlutusCore.Assembler.Types.AST     as AST
-import PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
-import           PlutusCore.Assembler.Types.Builtin (Builtin (..))
+import           PlutusCore.Assembler.Types.AST          (Binding, Builtin,
+                                                          Constant, Name,
+                                                          Program, Term)
+import qualified PlutusCore.Assembler.Types.AST          as AST
+import           PlutusCore.Assembler.Types.Builtin      (Builtin (..))
+import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
 
 
 type UnsweetProgram = UPLC.Program DeBruijn DefaultUni DefaultFun ()
