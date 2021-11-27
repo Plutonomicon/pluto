@@ -18,6 +18,7 @@ import qualified PlutusCore.Default as PLC
 import PlutusCore.Assembler.Prelude
 import PlutusCore.Assembler.Types.AST (Program, Term, Name, Constant, Builtin, Binding)
 import qualified PlutusCore.Assembler.Types.AST as AST
+import PlutusCore.Assembler.Types.Builtin (Builtin (..))
 import PlutusCore.Assembler.AnnDeBruijn (addNameToMap)
 
 
@@ -85,7 +86,57 @@ desugarConstant = todo
 
 
 desugarBuiltin :: Builtin -> DefaultFun
-desugarBuiltin = todo
+desugarBuiltin =
+  \case
+    AddInteger -> PLC.AddInteger
+    SubtractInteger -> PLC.SubtractInteger
+    MultiplyInteger -> PLC.MultiplyInteger
+    DivideInteger -> PLC.DivideInteger
+    QuotientInteger -> PLC.QuotientInteger
+    RemainderInteger -> PLC.RemainderInteger
+    ModInteger -> PLC.ModInteger
+    EqualsInteger -> PLC.EqualsInteger
+    LessThanInteger -> PLC.LessThanInteger
+    LessThanEqualsInteger -> PLC.LessThanEqualsInteger
+    AppendByteString -> PLC.AppendByteString
+    ConsByteString -> PLC.ConsByteString
+    SliceByteString -> PLC.SliceByteString
+    LengthByteString -> PLC.LengthOfByteString
+    IndexByteString -> PLC.IndexByteString
+    EqualsByteString -> PLC.EqualsByteString
+    LessThanByteString -> PLC.LessThanByteString
+    LessThanEqualByteString -> PLC.LessThanEqualsByteString
+    Sha2_256 -> PLC.Sha2_256
+    Sha3_256 -> PLC.Sha3_256
+    Blake2b_256 -> PLC.Blake2b_256
+    VerifySignature -> PLC.VerifySignature
+    AppendString -> PLC.AppendString
+    EqualsString -> PLC.EqualsString
+    EncodeUtf8 -> PLC.EncodeUtf8
+    DecodeUtf8 -> PLC.DecodeUtf8
+    IfThenElse -> PLC.IfThenElse
+    ChooseUnit -> PLC.ChooseUnit
+    Trace -> PLC.Trace
+    FstPair -> PLC.FstPair
+    SndPair -> PLC.SndPair
+    ChooseList -> PLC.ChooseList
+    MkCons -> PLC.MkCons
+    HeadList -> PLC.HeadList
+    TailList -> PLC.TailList
+    NullList -> PLC.NullList
+    ChooseData -> PLC.ChooseData
+    ConstrData -> PLC.ConstrData
+    MapData -> PLC.MapData
+    ListData -> PLC.ListData
+    IData -> PLC.IData
+    BData -> PLC.BData
+    UnConstrData -> PLC.UnConstrData
+    UnMapData -> PLC.UnMapData
+    UnBData -> PLC.UnBData
+    EqualsData -> PLC.EqualsData
+    MkPairData -> PLC.MkPairData
+    MkNilData -> PLC.MkNilData
+    MkNilPairData -> PLC.MkNilPairData
 
 
 todo :: a
