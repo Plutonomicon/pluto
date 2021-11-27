@@ -21,7 +21,7 @@ import           Data.ByteString     (ByteString)
 import           Data.Either.Extra   (eitherToMaybe)
 import           Data.List           (concat, unzip)
 import           Data.Text           (Text)
-import           Prelude             (Bool (False, True), Bounded, Char,
+import           Prelude             (Bool (False, True), Bounded, Char, const,
                                       Either (Left, Right), Enum, Eq,
                                       Functor (fmap), IO, Integer, Integral,
                                       Maybe (Just, Nothing),

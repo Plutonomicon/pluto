@@ -15,23 +15,23 @@ import qualified PlutusCore.Assembler.Types.Token as T
 
 -- Every Constant has a unique constant representation as tokens,
 -- which is what this function outputs.
-constantToTokens :: Constant -> [T.Token]
+constantToTokens :: Constant ann -> [T.Token]
 constantToTokens =
   \case
-    I x     -> [T.Integer x]
-    S x     -> [T.ByteString x]
-    T x     -> [T.Text x]
-    U       -> [T.OpenParen, T.CloseParen]
-    B x     -> [T.Bool x]
-    L xs    -> [T.OpenBracket]
-            <> intercalate [T.Comma] (constantToTokens <$> xs)
-            <> [T.CloseBracket]
-    P (a,b) -> [T.OpenParen]
-            <> constantToTokens a
-            <> [T.Comma]
-            <> constantToTokens b
-            <> [T.CloseParen]
-    D d     -> [T.Data] <> dataToTokens d
+    I _ x     -> [T.Integer x]
+    S _ x     -> [T.ByteString x]
+    T _ x     -> [T.Text x]
+    U _       -> [T.OpenParen, T.CloseParen]
+    B _ x     -> [T.Bool x]
+    L _ xs    -> [T.OpenBracket]
+              <> intercalate [T.Comma] (constantToTokens <$> xs)
+              <> [T.CloseBracket]
+    P _ (a,b) -> [T.OpenParen]
+              <> constantToTokens a
+              <> [T.Comma]
+              <> constantToTokens b
+              <> [T.CloseParen]
+    D _ d     -> [T.Data] <> dataToTokens d
 
 
 dataToTokens :: Data -> [T.Token]
