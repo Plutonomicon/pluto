@@ -26,7 +26,6 @@ import           PlutusCore.Assembler.Spec.Prelude
 import           PlutusCore.Assembler.Types.AST          (Binding, Constant,
                                                           Data, Term)
 import qualified PlutusCore.Assembler.Types.AST          as AST
-import qualified PlutusCore.Assembler.Types.Constant     as AST
 import qualified PlutusCore.Assembler.Types.InfixBuiltin as InfixBuiltin
 import           PlutusCore.Assembler.Types.Token        (Token (..))
 import qualified PlutusCore.Assembler.Types.Token        as Tok
