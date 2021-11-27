@@ -12,6 +12,17 @@ let
              in norm (((a *i d) +i (b *i c)) `over` (b *i d))
            )
          );
-  zero = 0 `MkCons` 1
+  times = ( \x y ->
+            ( let a = num x;
+                  b = denom x;
+                  c = num y;
+                  d = denom y
+              in norm ((a *i c) `over` (b *i d))
+            )
+          );
+  zero = 0 `MkCons` 1;
+  one = 1 `MkCons` 1;
+  negate = todo;
+  reciprocal = todo
 in
-  plus `MkCons` ( zero `MkCons` NullList )
+  plus `MkCons` ( times `MkCons` ( negate `MkCons` ( reciprocal `MkCons` ( one `MkCons` ( zero `MkCons` NullList ) ) ) ) )
