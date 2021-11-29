@@ -16,6 +16,7 @@ library
     PlutusCore.Assembler.EntryPoint
     PlutusCore.Assembler.Parse
     PlutusCore.Assembler.Prelude
+    PlutusCore.Assembler.Shrink
     PlutusCore.Assembler.Tokenize
     PlutusCore.Assembler.Types.AST
     PlutusCore.Assembler.Types.Builtin
