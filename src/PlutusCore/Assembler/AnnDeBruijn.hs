@@ -68,7 +68,7 @@ annBindings m ( AST.Binding a x t : bs ) =
 
 addNameToMap :: Map Name DeBruijn -> Name -> Map Name DeBruijn
 addNameToMap m n =
-  -- TODO: is the first index zero or one?
-  Map.insert n (DeBruijn (Index 0)) (inc <$> m)
+  Map.insert n (DeBruijn firstIndex) (inc <$> m)
   where
     inc (DeBruijn (Index i)) = DeBruijn (Index (i+1))
+    firstIndex = Index 1
