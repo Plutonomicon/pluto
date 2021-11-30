@@ -20,7 +20,7 @@ To get a feel for the syntax, take a look at some examples.
 
 What follows is not a formal grammar for `pluto`, or even a wholly accurate description of the grammar, but a rough description, sufficient to get the idea, allowing for all valid syntax, while also allowing for some edge cases which are disallowed in practice to avoid parsing ambiguity, but which people are not likely to write in practice. The main thing to consider that is part of the grammar of `pluto` but not captured in the description below is the fact that `pluto` requires nested applications of binary operations to be fully parenthesized, lacking any notion of operator precedence. The grammar of `pluto` is actually substantially simpler than that of most languages.
 
-For a more formal description of the grammar of `pluto`, take a look at the code, in `PlutusCore.Assembler.Tokenize`. 
+For a more formal description of the grammar of `pluto`, take a look at the code, in `PlutusCore.Assembler.Tokenize` and `PlutusCore.Assembler.Parse`. 
 
 ```
 Program ::= Term
