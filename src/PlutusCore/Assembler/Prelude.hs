@@ -17,7 +17,7 @@ module PlutusCore.Assembler.Prelude
 
 import           Control.Applicative (Applicative (pure), liftA2, (<*>), (<|>))
 import           Control.Arrow       (first, second, (***))
-import           Control.Monad       (forM_, guard, mzero, void)
+import           Control.Monad       (forM_, guard, mzero, void, (<=<))
 import           Data.ByteString     (ByteString)
 import           Data.Either.Extra   (eitherToMaybe)
 import           Data.List           (concat, length, unzip)

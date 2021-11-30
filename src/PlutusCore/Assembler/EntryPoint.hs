@@ -20,6 +20,7 @@ import qualified PlutusCore.Assembler.Evaluate           as Evaluate
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
 import qualified PlutusCore.Pretty                       as Pretty
+import qualified Shower
 
 
 newtype InputFilePath = InputFilePath FilePath
@@ -82,25 +83,33 @@ runCommand = \case
           writeObjectCode mOutPath bs
   CommandRun mInPath -> do
       text <- getSourceCode mInPath
-      case Assemble.translate text of
+      case Assemble.parseProgram text of
         Left (ErrorMessage err) ->
-          putStrLn $ "Error(assembler): " <> unpack err
-        Right bs -> do
+          putStrLn $ "Error(parser): " <> unpack err
+        Right ast -> do
           -- TODO: Depending on the need, enable/disable individiual dumps in CLI arguments.
           let putHeader s = putStrLn ("\n" <> s) >> putStrLn (T.unpack $ T.replicate (length s) "-")
-          putHeader "UPLC"
-          print $ Scripts.unScript bs
-          putHeader "UPLC (pretty)"
-          putStrLn $ Pretty.display $ Scripts.unScript bs
-          case Evaluate.eval bs of
-            Left err ->
-              putStrLn $ "Error(eval): " <> show err
-            Right (exBudget, traces) -> do
-              putHeader "ExBudget"
-              print exBudget
-              putHeader "Script traces"
-              forM_ traces $ \trace ->
-                putStrLn $ unpack trace
+          putHeader "AST"
+          putStrLn $ Shower.shower $ () <$ ast
+          case Assemble.translate ast of
+            Left (ErrorMessage err) ->
+              putStrLn $ "Error(assembler): " <> unpack err
+            Right bs -> do
+              putHeader "UPLC"
+              putStrLn $ Shower.shower $ Scripts.unScript bs
+              putHeader "UPLC (pretty)"
+              putStrLn $ Pretty.display $ Scripts.unScript bs
+              case Evaluate.eval bs of
+                Left err ->
+                  putStrLn $ "Error(eval): " <> show err
+                Right (exBudget, traces, res) -> do
+                  putHeader "ExBudget"
+                  print exBudget
+                  putHeader "Script traces"
+                  forM_ traces $ \trace ->
+                    putStrLn $ unpack trace
+                  putHeader "Script result"
+                  print res
 
 
 getSourceCode :: Maybe InputFilePath -> IO Text
