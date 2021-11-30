@@ -19,3 +19,4 @@ jobs:
     - run: nix-shell --command "./ci/lint.sh"
     - run: nix-build
     - run: nix flake check
+    - run: nix-shell --command 'cabal run pluto -- run examples/hello.pluto'
