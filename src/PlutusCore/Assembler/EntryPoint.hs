@@ -90,7 +90,7 @@ runCommand = \case
           -- TODO: Depending on the need, enable/disable individiual dumps in CLI arguments.
           let putHeader s = putStrLn ("\n" <> s) >> putStrLn (T.unpack $ T.replicate (length s) "-")
           putHeader "AST"
-          putStrLn $ Shower.shower $ () <$ ast
+          putStrLn $ Shower.shower $ void ast
           case Assemble.translate ast of
             Left (ErrorMessage err) ->
               putStrLn $ "Error(assembler): " <> unpack err
