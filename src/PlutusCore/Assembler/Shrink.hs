@@ -3,7 +3,10 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module PlutusCore.Assembler.Shrink 
-  (shrinkProgram
+  (shrinkProgram -- all exports besides shrinkProgram are exported for testing
+  ,Tactic
+  ,SafeTactic
+  ,Term
   ,subs
   ,removeDeadCode
               )where
@@ -15,12 +18,14 @@ import           Data.List                    (sortOn)
 import           Plutus.V1.Ledger.Scripts     (Script (..))
 import qualified PlutusCore.Core              as PLC
 import           Prelude                      (Int, drop, fromIntegral, head,
-                                               id, map, take, (++),(>))
+                                               id, map, take, (++),(>),min)
 import qualified UntypedPlutusCore.Core.Type  as UPLC
 
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.DeBruijn          (DeBruijn (..),Index (..))
 import           PlutusCore.Default           (DefaultFun, DefaultUni)
+
+import Debug.Trace
 
 type Term    = UPLC.Term    DeBruijn DefaultUni DefaultFun ()
 type Program = UPLC.Program DeBruijn DefaultUni DefaultFun ()
@@ -45,6 +50,8 @@ data ShrinkParams = ShrinkParams
   , parallelTerms   :: Int
   }
 
+data WhnfRes = Err | Unclear  | Safe deriving (Eq,Ord)
+
 data TacticFork a = Pure a | Fork Term (Term -> TacticFork a)
   deriving Functor
 
@@ -63,7 +70,9 @@ shrinkProgram :: Program -> Program
 shrinkProgram (UPLC.Program ann version term) = UPLC.Program ann version (shrinkTerm term)
 
 shrinkTerm :: Term -> Term
-shrinkTerm = runShrink defaultShrinkParams
+shrinkTerm t = let
+  t' = runShrink defaultShrinkParams t
+    in trace (show t ++ "\nshrank to\n" ++ show t') t'
 
 runShrink :: ShrinkParams -> Term -> Term
 runShrink sp = runShrink' sp . return
@@ -144,14 +153,26 @@ appBind name val = completeRec $ \case
       UPLC.Var _ varName -> if dbnIndex name == dbnIndex varName
                                then Just val
                                else Nothing
-      UPLC.LamAbs ann lname term -> Just $ UPLC.LamAbs ann lname (appBind (incName name) val term)
+      UPLC.LamAbs ann lname term -> Just $ UPLC.LamAbs ann lname (appBind (incName name) (incDeBruijns val) term)
       _ -> Nothing
 
 incName :: DeBruijn -> DeBruijn
 incName (DeBruijn n) = DeBruijn (n+1)
 
+incDeBruijns :: Term -> Term
+incDeBruijns = incDeBruijns' 0
+
+incDeBruijns' :: Index -> Term -> Term
+incDeBruijns' level = completeRec $ \case
+  UPLC.Var ann name -> Just $ UPLC.Var ann (incAbove level name)
+  UPLC.LamAbs ann name term -> Just $ UPLC.LamAbs ann name (decDeBruijns' (level + 1) term)
+  _                 -> Nothing
+
 decAbove :: Index -> DeBruijn -> DeBruijn
 decAbove level (DeBruijn n) = if n > level then DeBruijn (n-1) else DeBruijn n
+
+incAbove :: Index -> DeBruijn -> DeBruijn
+incAbove level (DeBruijn n) = if n > level then DeBruijn (n+1) else DeBruijn n
 
 decDeBruijns :: Term -> Term
 decDeBruijns = decDeBruijns' 0
@@ -171,21 +192,45 @@ mentions name@(DeBruijn n) = \case
   UPLC.Delay _ term        -> mentions name term
   _                        -> False
 
+whnf :: Term -> WhnfRes
+whnf = \case
+  UPLC.Var{} -> Unclear
+  UPLC.LamAbs{} -> Safe
+  UPLC.Apply _ (UPLC.LamAbs _ name lTerm) valTerm -> case whnf valTerm of
+                                                       Err -> Err
+                                                       res -> min res $ 
+                                                          whnf (appBind name valTerm lTerm)
+  UPLC.Apply _ fTerm xTerm -> min Unclear $ min (whnf fTerm) (whnf xTerm)
+    -- it should be possible to make this clear more often
+    -- ie. a case over builtins 
+  UPLC.Force _ (UPLC.Delay _ term) -> whnf term
+  UPLC.Force{} -> Unclear
+  UPLC.Delay{} -> Safe
+  UPLC.Constant{} -> Safe
+  UPLC.Builtin{} -> Safe 
+  UPLC.Error{} -> Err
+
 -- Tactics
 
 subs :: Tactic
 subs = completeTactic $ \case
       UPLC.Apply _ (UPLC.LamAbs _ name funTerm) varTerm ->
-        return . return $ decDeBruijns $ appBind name varTerm funTerm
+        case whnf varTerm of
+          Safe -> return . return $ decDeBruijns $ appBind name varTerm funTerm
+          Unclear -> Nothing
+          Err -> return . return $ UPLC.Error ()
       _ -> Nothing
 
 -- Safe Tactics
 
 removeDeadCode :: SafeTactic
 removeDeadCode = completeRec $ \case
-  (UPLC.Apply _ (UPLC.LamAbs _ name term) _) ->
-    if mentions name term
-       then Nothing
-       else Just $ decDeBruijns term
+  (UPLC.Apply _ (UPLC.LamAbs _ name term) val) ->
+    case whnf val of
+        Safe -> if mentions name term
+           then Nothing
+           else Just $ removeDeadCode $ decDeBruijns term
+        Unclear -> Nothing
+        Err -> Just $ UPLC.Error ()
   _ -> Nothing
 
