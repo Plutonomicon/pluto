@@ -23,7 +23,7 @@ import qualified UntypedPlutusCore.Core.Type  as UPLC
 
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.DeBruijn          (DeBruijn (..),Index (..))
-import           PlutusCore.Default           (DefaultFun, DefaultUni)
+import           PlutusCore.Default           (DefaultFun(..), DefaultUni)
 
 import Debug.Trace
 
@@ -200,6 +200,9 @@ whnf = \case
                                                        Err -> Err
                                                        res -> min res $ 
                                                           whnf (appBind name valTerm lTerm)
+  UPLC.Apply _ (UPLC.Apply _ (UPLC.Builtin _ builtin) arg1) arg2 -> if safe2Arg builtin
+                                                                       then min (whnf arg1) (whnf arg2)
+                                                                       else min Unclear $ min (whnf arg1) (whnf arg2)
   UPLC.Apply _ fTerm xTerm -> min Unclear $ min (whnf fTerm) (whnf xTerm)
     -- it should be possible to make this clear more often
     -- ie. a case over builtins 
@@ -209,6 +212,33 @@ whnf = \case
   UPLC.Constant{} -> Safe
   UPLC.Builtin{} -> Safe 
   UPLC.Error{} -> Err
+
+safe2Arg :: DefaultFun -> Bool
+safe2Arg = \case
+  AddInteger -> True
+  SubtractInteger -> True
+  MultiplyInteger -> True
+  EqualsInteger -> True
+  LessThanInteger -> True
+  LessThanEqualsInteger -> True
+  AppendByteString -> True
+  ConsByteString -> True
+  IndexByteString -> True
+  EqualsByteString -> True
+  LessThanByteString -> True
+  LessThanEqualsByteString -> True
+  VerifySignature -> True
+  AppendString -> True
+  EqualsString -> True
+  ChooseUnit -> True
+  Trace -> True
+  FstPair -> True
+  SndPair -> True
+  MkCons -> True
+  ConstrData -> True
+  EqualsData -> True
+  MkPairData -> True
+  _ -> False
 
 -- Tactics
 
@@ -229,7 +259,7 @@ removeDeadCode = completeRec $ \case
     case whnf val of
         Safe -> if mentions name term
            then Nothing
-           else Just $ removeDeadCode $ decDeBruijns term
+           else Just $ decDeBruijns term
         Unclear -> Nothing
         Err -> Just $ UPLC.Error ()
   _ -> Nothing
