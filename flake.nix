@@ -51,5 +51,7 @@
         ];
         pkgs = import nixpkgs { inherit system overlays; inherit (haskellNix) config; };
         flake = pkgs.pluto.flake { };
-      in flake);
+      in flake // {
+        defaultPackage = flake.packages."pluto:exe:pluto";
+      });
 }
