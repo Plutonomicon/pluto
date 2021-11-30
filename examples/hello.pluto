@@ -1,0 +1,7 @@
+-- Hello world
+let 
+  sayHello = (\name -> 
+    let greeting = "Hello"
+    in (greeting +s name))
+in 
+  sayHello "world"

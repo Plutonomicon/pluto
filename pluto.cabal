@@ -14,6 +14,7 @@ library
     PlutusCore.Assembler.ConstantToTokens
     PlutusCore.Assembler.Desugar
     PlutusCore.Assembler.EntryPoint
+    PlutusCore.Assembler.Evaluate
     PlutusCore.Assembler.Parse
     PlutusCore.Assembler.Prelude
     PlutusCore.Assembler.Tokenize

@@ -81,4 +81,16 @@ InfixBuiltin ::= '+i' | '-i' | '*i' | '/i' | '%i' | '==i' | '<i' | '<=i'
 
 ### Development guidelines
 
-TODO
+Run `nix-shell` to drop yourself in the development shell. From here, you may launch your text-editor and get access to IDE support via Haskell Language Server, as well use `cabal` to build and run the project.
+
+To run the HelloWorld example,
+
+```
+cabal run pluto -- run examples/hello.pluto
+```
+
+To only assemble the Pluto program into a Plutus bytecode:
+
+```
+cabal run pluto -- assemble examples/hello.pluto
+```
