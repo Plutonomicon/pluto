@@ -179,20 +179,34 @@ Map ::= "{" ( Data "=" Data )* "}"
 
 Run `nix-shell` (or `nix develop`, if you prefer to use the flake and you have Nix 2.4) to drop yourself in the development shell. From here, you may launch your text-editor and get access to IDE support via Haskell Language Server, as well use `cabal` to build and run the project.
 
+For rapid compilation feedback cycle, Ghcid can be run as follows,
+
+```
+ghcid -T PlutusCore.Assembler.EntryPoint.main --setup ":set args run examples/hello.pluto"
+```
+
+### Examples
+
 To run the HelloWorld example,
 
 ```
 cabal run pluto -- run examples/hello.pluto
 ```
 
+To evaluate a top-level binding with (optional) arguments. For example, this command evalutes the `greet` function from `hello.pluto` by applying it with the two given arguments.
+
+```
+cabal run pluto -- eval examples/hello.pluto greet '"Bonjour"' '"Charles"'
+```
+
+Top-level variables can also be accessed by ignoring the arguments:
+
+```
+cabal run pluto -- eval examples/hello.pluto defaultGreeting
+```
+
 To only assemble the Pluto program into a Plutus bytecode:
 
 ```
 cabal run pluto -- assemble examples/hello.pluto
-```
-
-For rapid compilation feedback cycle, Ghcid can be run as follows,
-
-```
-ghcid -T PlutusCore.Assembler.EntryPoint.main --setup ":set args run examples/hello.pluto"
 ```

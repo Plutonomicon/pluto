@@ -10,6 +10,7 @@ module PlutusCore.Assembler.Prelude
   , module Data.ByteString
   , module Data.Either
   , module Data.Either.Extra
+  , module Data.Foldable
   , module Data.List
   , module Data.Map
   , module Data.Maybe
@@ -29,6 +30,7 @@ import           Data.Bifunctor       (bimap)
 import           Data.ByteString      (ByteString)
 import           Data.Either          (either)
 import           Data.Either.Extra    (eitherToMaybe)
+import           Data.Foldable        (foldl')
 import           Data.List            (concat, find, length, unzip)
 import           Data.Map             (Map)
 import           Data.Maybe           (mapMaybe, maybe)

@@ -42,12 +42,10 @@ data Command
     (Maybe OutputFilePath)
   | CommandRun
     (Maybe InputFilePath)
-  | CommandRunBinding
+  | CommandEval
     (Maybe InputFilePath)
-    -- Variable name in the top-level binding
     AST.Name
-    -- Argument to the lambda bound by the variable
-    (AST.Term ())
+    [AST.Term ()]
 
 
 inputFilePath :: O.Parser (Maybe InputFilePath)
@@ -65,7 +63,7 @@ command =
   O.subparser . mconcat $
     [ O.command "assemble" (O.info assembleP (O.progDesc "Assemble to Plutus bytecode, and display the HEX")),
       O.command "run" (O.info runP (O.progDesc "Run the Pluto code in Plutus evauator")),
-      O.command "runbinding" (O.info runBindingP (O.progDesc "Evaluate a let binding in the program"))
+      O.command "eval" (O.info runBindingP (O.progDesc "Evaluate a let binding in the program"))
     ]
   where
     assembleP =
@@ -76,10 +74,10 @@ command =
       CommandRun
       <$> inputFilePath
     runBindingP =
-      CommandRunBinding
+      CommandEval
       <$> inputFilePath
       <*> fmap AST.Name (O.strArgument (O.metavar "BINDING" <> O.help "Name of the variable bound in the let block"))
-      <*> O.argument termReader (O.metavar "ARG")
+      <*> O.many (O.argument termReader (O.metavar "ARG"))
     termReader :: O.ReadM (AST.Term ())
     termReader =
       O.eitherReader $ \(T.pack -> s) ->
@@ -149,12 +147,14 @@ runCommand cmd = do
         logInfo trace
       logHeader "Script result"
       liftIO $ print res
-    CommandRunBinding mInPath name arg -> do
+    CommandEval mInPath name args -> do
       ast <- void <$> parseInput mInPath
-      ast' <- liftError ErrorOther $ Transform.applyToplevelBoundLambdaWith name arg ast
+      ast' <- liftError ErrorOther $ Transform.applyToplevelBinding name args ast
+      logHeader "AST (transformed)"
       logShower ast'
       script <- liftError ErrorAssembling $ Assemble.translate ast'
       (_, _, res) <- liftError ErrorEvaluating $ Evaluate.eval script
+      logHeader $ "Result of applying " <> AST.getName name <> " on " <> T.pack (show args) <> ":"
       liftIO $ print res
   where
     logHeader s = logInfo ("\n" <> s) >> logInfo (T.replicate (T.length s) "-")
