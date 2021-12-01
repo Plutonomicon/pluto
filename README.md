@@ -40,73 +40,137 @@ experimental-features = nix-command flakes
 
 ### Build instructions
 
+To build:
+
 ```
 nix build
 ```
 
-### Syntax
+### Usage instructions.
 
-To get a feel for the syntax, take a look at some examples.
+These usage instructions assume a `pluto` binary is on your shell `PATH`. If you ran `nix build`, then there is a `pluto` binary at `./result/bin/pluto`.
 
-What follows is not a formal grammar for `pluto`, or even a wholly accurate description of the grammar, but a rough description, sufficient to get the idea, allowing for all valid syntax, while also allowing for some edge cases which are disallowed in practice to avoid parsing ambiguity, but which people are not likely to write in practice. The main thing to consider that is part of the grammar of `pluto` but not captured in the description below is the fact that `pluto` requires nested applications of binary operations to be fully parenthesized, lacking any notion of operator precedence. The grammar of `pluto` is actually substantially simpler than that of most languages.
-
-For a more formal description of the grammar of `pluto`, take a look at the code, in `PlutusCore.Assembler.Tokenize` and `PlutusCore.Assembler.Parse`. 
+To print usage instructions:
 
 ```
+pluto --help
+```
+
+To print usage instructions on a specific command:
+
+```
+pluto --help [command]
+```
+
+There are two commands: `assemble` and `run`.
+
+ * `assemble` takes Pluto source code and turns it into binary object code.
+ * `run` takes Pluto source code and executes it.
+
+### Syntax
+
+To get a feel for the syntax, take a look at some examples, in `./examples`.
+
+Pluto has token-level (lexical) syntax and term-level syntax. First the text is lexically analyzed into a series of whitespace-separated tokens. Then the tokens are parsed into an AST.
+
+The grammars below are written in semi-formal notation, a mixture of BNF-like notation and Perl-compatible regular expression notation.
+
+#### Lexical grammar
+
+```
+Start ::= Whitespace* (Token Whitespace*)*
+
+Whitespace ::= [\t\r\n] | OneLineComment | MultiLineComment
+
+OneLineComment ::= "--" ([^\r\n]*[\r\n])
+
+MultiLineComment ::= "{-" MultiLineCommentEnding
+
+MultiLineCommentEnding ::= "-}" | . MultiLineCommentEnding
+
+Token ::= "\\" | "->" | 
+        | "!" | "#" | "(" | ")" | "Error"
+        | Integer | ByteString | Text | "True" | "False"
+        | "[" | "]" | "," | "." | "`" | "{" | "}"
+        | "data" | "sigma" | "=" | Builtin | "let"
+        | ";" | "in" | "if" | "then" | "else"
+        | Var
+
+Var ::= [a-z][a-zA-Z0-9]*
+
+Integer ::= "-"? [0-9]+
+
+ByteString ::= "0x" [0-9a-eA-E]+
+
+Text ::= "\"" ( "\\" [\\rnt] | [^\r\n\t\\] )* "\""
+
+InfixBuiltin ::= 
+  "+i" | "-i" | "*i" | "/i" | "%i"
+       | "==i" | "<i" | "<=i" | "+b" | ":b" | "!b"
+       | "==b" | "<b" | "<=b" | "+s" | "==s" | "==d"
+
+Builtin ::=
+    "AddInteger" | "SubtractInteger" | "MultiplyInteger"
+  | "DivideInteger" | "QuotientInteger" | "RemainderInteger"
+  | "ModInteger" | "EqualsInteger" | "LessThanInteger"
+  | "LessThanEqualsInteger" | "AppendByteString"
+  | "ConsByteString" | "SliceByteString" | "LengthByteString"
+  | "IndexByteString" | "EqualsByteString" | "LessThanByteString"
+  | "LessThanEqualByteString" | "Sha2_256" | "Sha3_256" | "Blake2b_256"
+  | "VerifySignature" | "AppendString" | "EqualsString"
+  | "EncodeUtf8" | "DecodeUtf8" | "IfThenElse" | "ChooseUnit"
+  | "MkCons" | "HeadList" | "TailList" | "NullList"
+  | "ChooseData" | "ConstrData" | "MapData" | "ListData"
+  | "IData" | "BData" | "UnConstrData" | "UnMapData"
+  | "EqualsData" | "MkPairData" | "MkNilData" | "MkNilPairData"
+```
+
+#### Syntactical grammar
+
+```
+Start ::= Program
+
 Program ::= Term
 
-Term ::= Var | Lambda | Apply | Force | Delay | Constant | Builtin | 'Error'
-       | Let | IfThenElse | '(' Term ')' | InfixApply
+Term ::= Term0
 
-Var ::= [a-z][a-zA-Z0-9_]*
+Term0 ::= Lambda | Term1
 
-Lambda ::= '\' Var+ '->' Term
+Lambda ::= "\" Var+ "->" Term
 
-Apply ::= Term Term
+Term1 ::= IfTerm | LetTerm | Term2
 
-Force ::= '!' Term
+IfTerm ::= "if" Term2 "then" Term2 "else" Term1
 
-Delay ::= '#' Term
+LetTerm ::= "let" Binding ( ";" Binding )* "in" Term2
 
-Constant ::= Integer | ByteString | Text | '()' | 'True' | 'False' | Data
+Term2 ::= InfixApply | Term3
 
-Data ::= 'data' DataConstant
+InfixApply ::= Term3 InfixOp Term3
 
-DataConstant ::= DataConstr | DataMap | DataList | Integer | ByteString
+InfixOp ::= InfixBuiltin | BacktickInfix
 
-DataConstr ::= 'sigma' NonNegativeInteger '.' '[' (DataConstant ( , DataConstant)*)? ']'
+BacktickInfix ::= "`" ( Var | Builtin ) "`"
 
-DataMap ::= '{' (DataMapEntry (',' DataMapEntry)*)? '}'
+Term3 ::= Term4+
 
-DataMapEntry ::= DataConstant '=' DataConstant
+Term4 ::= "!" Term5 | "#" Term5 | Term5
 
-DataList ::= '[' (DataConstant (',' DataConstant)*)? ']'
+Term5 ::= Var | Builtin | "Error" | ParenTerm | Constant
 
-Builtin ::= 'AddInteger' | 'SubtractInteger' | 'MultiplyInteger' | 'DivideInteger'
-          | 'QuotientInteger' | 'RemainderInteger' | 'ModInteger' | 'EqualsInteger'
-          | 'LessThanInteger' | 'LessThanEqualsInteger' | 'AppendByteString'
-          | 'ConsByteString' | 'SliceByteString' | 'LengthByteString' | 'IndexByteString'
-          | 'EqualsByteString' | 'LessThanByteString' | 'LessThanEqualByteString'
-          | 'Sha2_256' | 'Sha3_256' | 'Blake2b_256' | 'VerifySignature' | 'AppendString'
-          | 'EqualsString' | 'EncodeUtf8' | 'DecodeUtf8' | 'IfThenElse' | 'ChooseUnit'
-          | 'Trace' | 'FstPair' | 'SndPair' | 'ChooseList' | 'MkCons' | 'HeadList'
-          | 'TailList' | 'NullList' | 'ChooseData' | 'ConstrData' | 'MapData' | 'ListData'
-          | 'IData' | 'BData' | 'UnConstrData' | 'UnMapData' | 'UNBData' | 'EqualsData'
-          | 'MkPairData' | 'MkNilData' | 'MkNilPairData'
+ParenTerm ::= "(" Term ")"
 
-Let ::= 'let' LetClause (';' LetClause)* 'in' Term
+Unit ::= "(" ")"
 
-LetClause ::= Var '=' Term
+Constant ::= Bool | Integer | ByteString | Text | Data
 
-IfThenElse ::= 'if' Term 'then' Term 'else' Term
+Data ::= "data" ( Sigma | List | Map | Integer | ByteString )
 
-InfixApply ::= Term InfixBuiltin Term
-             | Term '`' (Builtin | Var) '`' Term
+Sigma ::= "sigma" Integer "." "[" Data* "]"
 
-InfixBuiltin ::= '+i' | '-i' | '*i' | '/i' | '%i' | '==i' | '<i' | '<=i'
-               | '+b' | ':b' | '!b' | '==b' | '<b' | '<=b'
-               | '+s' | '==s'
-               | '==d'
+List ::= "[" Data* "]"
+
+Map ::= "{" ( Data "=" Data )* "}"
 ```
 
 ### Development guidelines
