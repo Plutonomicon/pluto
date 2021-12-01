@@ -14,6 +14,7 @@ module PlutusCore.Assembler.Prelude
   , module Data.List
   , module Data.Map
   , module Data.Maybe
+  , module Data.String
   , module Data.Text
   , module Prelude
   , (<$$>)
@@ -34,6 +35,7 @@ import           Data.Foldable        (foldl')
 import           Data.List            (concat, find, length, unzip)
 import           Data.Map             (Map)
 import           Data.Maybe           (mapMaybe, maybe)
+import           Data.String          (IsString (fromString))
 import           Data.Text            (Text)
 import           Prelude              (Bool (False, True), Bounded, Char,
                                        Either (Left, Right), Enum, Eq,

@@ -13,21 +13,19 @@ module PlutusCore.Assembler.EntryPoint (main) where
 import           Data.Text                               (pack, unpack)
 import qualified Options.Applicative                     as O
 import           System.IO                               (FilePath, getContents,
-                                                          hPutStrLn, print,
-                                                          putStrLn, readFile,
-                                                          stderr, writeFile)
+                                                          print, readFile,
+                                                          writeFile)
 import           Text.Hex                                (encodeHex)
 
 import qualified Data.Text                               as T
 import qualified Plutus.V1.Ledger.Scripts                as Scripts
+import           PlutusCore.Assembler.App
 import qualified PlutusCore.Assembler.Assemble           as Assemble
 import qualified PlutusCore.Assembler.Evaluate           as Evaluate
 import           PlutusCore.Assembler.Prelude
-import qualified PlutusCore.Assembler.Transform          as Transform
 import qualified PlutusCore.Assembler.Types.AST          as AST
 import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
 import qualified PlutusCore.Pretty                       as Pretty
-import qualified Shower
 
 
 newtype InputFilePath = InputFilePath { getInputFilePath :: FilePath }
@@ -95,37 +93,6 @@ commandInfo =
   <> O.header "pluto - Untyped Plutus Core assembler"
    )
 
--- | An error when running the CLI command.
---
--- Gathers all possible errors in the application.
-data Error
-  = ErrorParsing ErrorMessage
-  | ErrorAssembling ErrorMessage
-  | ErrorEvaluating Evaluate.ScriptError
-  | ErrorOther Text
-  deriving (Eq, Show)
-
-logInfo :: MonadIO m => Text -> m ()
-logInfo s =
-  liftIO $ putStrLn $ T.unpack s
-
--- | Like `logInfo` but displays the value pretty-printed using shower.
-logShower :: (MonadIO m, Show a) => a -> m ()
-logShower =
-  logInfo . T.pack . Shower.shower
-
-logError :: MonadIO m => Error -> m ()
-logError = \case
-  ErrorParsing (ErrorMessage em)    -> f (Just "parser") em
-  ErrorAssembling (ErrorMessage em) -> f (Just "assembler") em
-  ErrorEvaluating em                -> f (Just "eval") (T.pack $ show em)
-  ErrorOther em                     -> f Nothing em
-  where
-    f mName msg = do
-      let prefix = maybe "Error" (\name -> "Error(" <> name <> ")") mName
-      liftIO $ hPutStrLn stderr $ prefix <> ": " <> T.unpack msg
-
-
 runCommand :: forall m. (MonadIO m, MonadError Error m) => Command -> Verbose -> m ()
 runCommand cmd (Verbose verbose) = do
   case cmd of
@@ -153,19 +120,11 @@ runCommand cmd (Verbose verbose) = do
         logHeader "Script result"
       liftIO $ print res
     CommandEval mInPath name args -> do
-      ast <- void <$> parseInput mInPath
-      ast' <- liftError ErrorOther $ Transform.applyToplevelBinding name args ast
-      when verbose $ do
-        logHeader "AST (transformed)"
-        logShower ast'
-      script <- liftError ErrorAssembling $ Assemble.translate ast'
-      (_, _, res) <- liftError ErrorEvaluating $ Evaluate.eval script
-      when verbose $ do
-        logHeader $ "Result of applying " <> AST.getName name <> " on " <> T.pack (show args) <> ":"
+      res <-
+        either throwError pure . Evaluate.evalToplevelBinding name args . void
+          =<< parseInput mInPath
       liftIO $ print res
   where
-    logHeader s = logInfo ("\n" <> s) >> logInfo (T.replicate (T.length s) "-")
-    liftError f = either (throwError . f) pure
     parseInput mInPath = do
       text <- liftIO $ getSourceCode mInPath
       liftError ErrorParsing $ Assemble.parseProgram (maybe "<stdin>" getInputFilePath mInPath) text

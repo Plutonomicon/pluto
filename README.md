@@ -185,6 +185,12 @@ For rapid compilation feedback cycle, Ghcid can be run as follows,
 ghcid -T PlutusCore.Assembler.EntryPoint.main --setup ":set args run examples/hello.pluto"
 ```
 
+To run specific tests (eg: tests on example) in Ghcid,
+
+```
+ghcid -c 'cabal repl spec' -T Main.main --setup ':set args "-p" example'
+```
+
 ### Examples
 
 To run the HelloWorld example,
@@ -198,13 +204,13 @@ cabal run pluto -- -v run examples/hello.pluto
 To evaluate a top-level binding with (optional) arguments. For example, this command evalutes the `greet` function from `hello.pluto` by applying it with the two given arguments.
 
 ```
-cabal run pluto -- -v eval examples/hello.pluto greet '"Bonjour"' '"Charles"'
+cabal run pluto -- eval examples/hello.pluto greet '"Bonjour"' '"Charles"'
 ```
 
 Top-level variables can also be accessed by ignoring the arguments:
 
 ```
-cabal run pluto -- -v eval examples/hello.pluto defaultGreeting
+cabal run pluto -- eval examples/hello.pluto defaultGreeting
 ```
 
 To only assemble the Pluto program into a Plutus bytecode:

@@ -34,6 +34,9 @@ newtype Program ann = Program { unProgram :: Term ann }
 newtype Name = Name { getName :: Text }
   deriving (Eq, Ord, Show)
 
+instance IsString Name where
+  fromString = Name . fromString
+
 
 data Term ann =
     Var ann Name

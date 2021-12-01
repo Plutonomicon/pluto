@@ -4,12 +4,19 @@
 {-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE TypeApplications  #-}
 
-module PlutusCore.Assembler.Evaluate (eval, Scripts.ScriptError) where
+module PlutusCore.Assembler.Evaluate
+  ( eval
+  , evalToplevelBinding
+  ) where
 
 import           Control.Monad.Except
 import           Plutus.V1.Ledger.Scripts                 (Script)
 import qualified Plutus.V1.Ledger.Scripts                 as Scripts
+import           PlutusCore.Assembler.App
+import qualified PlutusCore.Assembler.Assemble            as Assemble
+import qualified PlutusCore.Assembler.Build               as Build
 import           PlutusCore.Assembler.Prelude
+import qualified PlutusCore.Assembler.Types.AST           as AST
 import           PlutusCore.Evaluation.Machine.ExBudget   (ExBudget)
 import           PlutusTx.Evaluation                      (evaluateCekTrace)
 import           UntypedPlutusCore                        (DefaultFun,
@@ -19,6 +26,14 @@ import qualified UntypedPlutusCore.Evaluation.Machine.Cek as UPLC
 
 eval :: Script -> Either Scripts.ScriptError (ExBudget, [Text], Term Name DefaultUni DefaultFun ())
 eval = evaluateScript @(Either Scripts.ScriptError)
+
+evalToplevelBinding :: AST.Name -> [AST.Term ()] -> AST.Program () -> Either Error (Term Name DefaultUni DefaultFun ())
+evalToplevelBinding name args prog = do
+  prog' <- liftError ErrorOther $ Build.applyToplevelBinding name args prog
+  (_, _, res) <-
+    liftError ErrorEvaluating . eval
+      =<< liftError ErrorAssembling (Assemble.translate prog')
+  pure res
 
 -- | Evaluate a script, returning the trace log and term result.
 --

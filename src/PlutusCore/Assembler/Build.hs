@@ -3,12 +3,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies      #-}
 
--- | Functions that query and transform the Pluto AST in various ways
-module PlutusCore.Assembler.Transform
+-- | Functions that build and transform the Pluto AST in various ways
+module PlutusCore.Assembler.Build
   ( applyToplevelBinding,
+    -- * Builtin types
+    text,
+    var
   )
 where
 
+import qualified Data.Text                      as T
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Types.AST
 
@@ -31,16 +35,25 @@ applyToplevelBinding ::
   -- | The new program that retains the let bindings, but with a new body
   -- containing the expression requested.
   Either Text (Program ())
-applyToplevelBinding var args = \case
+applyToplevelBinding name args = \case
   Program (Let ann bindings _oldBody) ->
-    case getBoundTerm var `mapMaybe` bindings of
+    case getBoundTerm name `mapMaybe` bindings of
       [_boundTerm] -> do
-        let newBody = foldl' (Apply ()) (Var () var) args
+        let newBody = foldl' (Apply ()) (Var () name) args
         pure $ Program $ Let ann bindings newBody
-      _ -> throwError $ "expected a binding with name: " <> getName var
+      _ -> throwError $ "expected a binding with name: " <> getName name
   _ ->
     throwError "expected top-level let binding"
   where
     getBoundTerm k (Binding _ k' val) = do
       guard $ k == k'
       pure val
+
+-- | Create a Text term from Haskell Text
+text :: Text -> Term ()
+text s =
+  Constant () $ T () s
+
+var :: Text -> Term ()
+var s =
+  Var () $ fromString . T.unpack $ s
