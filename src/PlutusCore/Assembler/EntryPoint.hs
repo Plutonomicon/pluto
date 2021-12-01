@@ -1,6 +1,9 @@
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes        #-}
+{-# LANGUAGE TypeApplications  #-}
 
 
 module PlutusCore.Assembler.EntryPoint (main) where
@@ -9,8 +12,9 @@ module PlutusCore.Assembler.EntryPoint (main) where
 import           Data.Text                               (pack, unpack)
 import qualified Options.Applicative                     as O
 import           System.IO                               (FilePath, getContents,
-                                                          print, putStrLn,
-                                                          readFile, writeFile)
+                                                          hPutStrLn, print,
+                                                          putStrLn, readFile,
+                                                          stderr, writeFile)
 import           Text.Hex                                (encodeHex)
 
 import qualified Data.Text                               as T
@@ -35,6 +39,10 @@ data Command
     (Maybe OutputFilePath)
   | CommandRun
     (Maybe InputFilePath)
+  | CommandRunBinding
+    (Maybe InputFilePath)
+    Text
+    [Text]
 
 
 inputFilePath :: O.Parser (Maybe InputFilePath)
@@ -51,7 +59,8 @@ command :: O.Parser Command
 command =
   O.subparser . mconcat $
     [ O.command "assemble" (O.info assembleP (O.progDesc "Assemble to Plutus bytecode, and display the HEX")),
-      O.command "run" (O.info runP (O.progDesc "Run the Pluto code in Plutus evauator"))
+      O.command "run" (O.info runP (O.progDesc "Run the Pluto code in Plutus evauator")),
+      O.command "runbinding" (O.info runBindingP (O.progDesc "Evaluate a let binding in the program"))
     ]
   where
     assembleP =
@@ -61,6 +70,11 @@ command =
     runP =
       CommandRun
       <$> inputFilePath
+    runBindingP =
+      CommandRunBinding
+      <$> inputFilePath
+      <*> O.strArgument (O.metavar "BINDING" <> O.help "Name of the variable bound in the let block")
+      <*> O.many (O.strArgument $ O.metavar "ARG")
 
 
 commandInfo :: O.ParserInfo Command
@@ -71,58 +85,90 @@ commandInfo =
   <> O.header "pluto - Untyped Plutus Core assembler"
    )
 
+-- | An error when running the CLI command.
+--
+-- Gathers all possible errors in the application.
+data Error
+  = ErrorParsing ErrorMessage
+  | ErrorAssembling ErrorMessage
+  | ErrorEvaluating Evaluate.ScriptError
+  deriving (Eq, Show)
 
-runCommand :: Command -> IO ()
-runCommand = \case
-  CommandAssemble mInPath mOutPath -> do
+logInfo :: MonadIO m => Text -> m ()
+logInfo s = 
+  liftIO $ putStrLn $ T.unpack s
+
+-- | Like `logInfo` but displays the value pretty-printed using shower.
+logShower :: (MonadIO m, Show a) => a -> m ()
+logShower = 
+  logInfo . T.pack . Shower.shower
+
+logError :: MonadIO m => Error -> m ()
+logError = \case
+  ErrorParsing (ErrorMessage em)    -> f "parser" em
+  ErrorAssembling (ErrorMessage em) -> f "assembler" em
+  ErrorEvaluating em                -> f "eval" (T.pack $ show em)
+  where
+    f name msg =
+      liftIO $ hPutStrLn stderr $ "Error(" <> name <> "): " <> T.unpack msg
+
+
+runCommand :: forall m. (MonadIO m, MonadError Error m) => Command -> m ()
+runCommand cmd = do
+  case cmd of
+    CommandAssemble mInPath mOutPath -> do
       text <- getSourceCode mInPath
-      case Assemble.assemble text of
-        Left (ErrorMessage err) ->
-          putStrLn $ "Error: " <> unpack err
-        Right bs ->
-          writeObjectCode mOutPath bs
-  CommandRun mInPath -> do
+      prog <- liftError ErrorAssembling $ Assemble.assemble text
+      writeObjectCode mOutPath prog
+    CommandRun mInPath -> do
+      text <- liftIO $ getSourceCode mInPath
+      ast <- liftError ErrorParsing $ Assemble.parseProgram text
+      -- TODO: Depending on the need, enable/disable individiual dumps in CLI arguments.
+      logHeader "AST"
+      logShower $ void ast
+      prog <- liftError ErrorAssembling $ Assemble.translate ast
+      logHeader "UPLC"
+      logShower $ Scripts.unScript prog
+      logHeader "UPLC (pretty)"
+      logInfo $ Pretty.display $ Scripts.unScript prog
+      (exBudget, traces, res) <- liftError ErrorEvaluating $ Evaluate.eval prog
+      logHeader "ExBudget"
+      liftIO $ print exBudget
+      logHeader "Script traces"
+      forM_ traces $ \trace ->
+        logInfo trace
+      logHeader "Script result"
+      liftIO $ print res
+    CommandRunBinding mInPath fnName fnArgs -> do
       text <- getSourceCode mInPath
-      case Assemble.parseProgram text of
-        Left (ErrorMessage err) ->
-          putStrLn $ "Error(parser): " <> unpack err
-        Right ast -> do
-          -- TODO: Depending on the need, enable/disable individiual dumps in CLI arguments.
-          let putHeader s = putStrLn ("\n" <> s) >> putStrLn (T.unpack $ T.replicate (length s) "-")
-          putHeader "AST"
-          putStrLn $ Shower.shower $ void ast
-          case Assemble.translate ast of
-            Left (ErrorMessage err) ->
-              putStrLn $ "Error(assembler): " <> unpack err
-            Right bs -> do
-              putHeader "UPLC"
-              putStrLn $ Shower.shower $ Scripts.unScript bs
-              putHeader "UPLC (pretty)"
-              putStrLn $ Pretty.display $ Scripts.unScript bs
-              case Evaluate.eval bs of
-                Left err ->
-                  putStrLn $ "Error(eval): " <> show err
-                Right (exBudget, traces, res) -> do
-                  putHeader "ExBudget"
-                  print exBudget
-                  putHeader "Script traces"
-                  forM_ traces $ \trace ->
-                    putStrLn $ unpack trace
-                  putHeader "Script result"
-                  print res
+      ast <- liftError ErrorParsing $ Assemble.parseProgram text
+      logShower $ void ast
+      prog <- liftError ErrorAssembling $ Assemble.translate ast
+      (_, _, res) <- liftError ErrorEvaluating $ Evaluate.eval prog
+      liftIO $ print res
+      logInfo $ "TODO: Unsupported " <> fnName <> T.pack (show fnArgs)
+  where
+    logHeader s = logInfo ("\n" <> s) >> logInfo (T.replicate (T.length s) "-")
+    liftError f = either (throwError . f) pure
 
 
-getSourceCode :: Maybe InputFilePath -> IO Text
-getSourceCode Nothing                     = pack <$> getContents
-getSourceCode (Just (InputFilePath path)) = pack <$> readFile path
+getSourceCode :: MonadIO m => Maybe InputFilePath -> m Text
+getSourceCode Nothing                     = pack <$> liftIO getContents
+getSourceCode (Just (InputFilePath path)) = pack <$> liftIO (readFile path)
 
 
-writeObjectCode :: Maybe OutputFilePath -> ByteString -> IO ()
+writeObjectCode :: MonadIO m => Maybe OutputFilePath -> ByteString -> m ()
 writeObjectCode (Just (OutputFilePath path)) bs =
-  writeFile path (unpack (encodeHex bs))
+  liftIO $ writeFile path (unpack (encodeHex bs))
 writeObjectCode Nothing bs =
-  putStrLn (unpack (encodeHex bs))
+  logInfo $ encodeHex bs
 
 
 main :: IO ()
-main = O.execParser commandInfo >>= runCommand
+main = do
+  cmd <- O.execParser commandInfo
+  runExceptT (runCommand cmd) >>= \case
+    Left err ->
+      logError err
+    Right () ->
+      pure ()

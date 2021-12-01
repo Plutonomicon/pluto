@@ -4,7 +4,7 @@
 {-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE TypeApplications  #-}
 
-module PlutusCore.Assembler.Evaluate (eval) where
+module PlutusCore.Assembler.Evaluate (eval, Scripts.ScriptError) where
 
 import           Control.Monad.Except
 import           Plutus.V1.Ledger.Scripts                 (Script)
