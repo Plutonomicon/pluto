@@ -45,7 +45,7 @@ desugarTerm =
     AST.Var (p, m) x ->
       case Map.lookup x m of
         Just i -> pure (UPLC.Var () i)
-        Nothing -> Left (ErrorMessage $ "undefined variable name " <> AST.getName x <> " at source position " <> Text.pack (show p))
+        Nothing -> Left (ErrorMessage $ "undefined variable name '" <> AST.getName x <> "' at source position " <> Text.pack (show p))
     AST.Lambda (p, _) [] _ -> Left (ErrorMessage $ "lambda with no names at source position " <> Text.pack (show p))
     AST.Lambda _ [_] y ->
       UPLC.LamAbs () (DeBruijn (Index 0)) -- TODO: is this right?
