@@ -8,7 +8,7 @@
 
 ### Fair warning
 
-`pluto` is experimental and largely untested. Expect bugs.
+`pluto` is experimental and almost entirely untested in practice. Expect bugs.
 
 ### System requirements
 
