@@ -12,7 +12,11 @@
 
 ### System requirements
 
-To build `pluto`, you must have Nix 2.4. You can install this on NixOS adding the following
+Your system must have Nix installed in order to build `pluto`. Currently, there are no binary distributions of `pluto`; you must build from source.
+
+#### Nix flakes (optional)
+
+To build `pluto` as a flake, you must have Nix 2.4. You can install this on NixOS adding the following
 stanza to your configuration.nix.
 
 ```
@@ -40,10 +44,8 @@ experimental-features = nix-command flakes
 
 ### Build instructions
 
-To build:
-
 ```
-nix build
+nix-build
 ```
 
 ### Usage instructions.
@@ -175,7 +177,7 @@ Map ::= "{" ( Data "=" Data )* "}"
 
 ### Development guidelines
 
-Run `nix develop` to drop yourself in the development shell. From here, you may launch your text-editor and get access to IDE support via Haskell Language Server, as well use `cabal` to build and run the project.
+Run `nix-shell` (or `nix develop`, if you prefer to use the flake and you have Nix 2.4) to drop yourself in the development shell. From here, you may launch your text-editor and get access to IDE support via Haskell Language Server, as well use `cabal` to build and run the project.
 
 To run the HelloWorld example,
 
