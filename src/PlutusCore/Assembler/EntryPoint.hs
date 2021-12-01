@@ -1,3 +1,4 @@
+{-# LANGUAGE ApplicativeDo     #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
@@ -35,6 +36,7 @@ newtype InputFilePath = InputFilePath { getInputFilePath :: FilePath }
 
 newtype OutputFilePath = OutputFilePath { _getOutputFilePath :: FilePath }
 
+newtype Verbose = Verbose Bool
 
 data Command
   = CommandAssemble
@@ -58,13 +60,15 @@ outputFilePath =
   O.argument (Just . OutputFilePath <$> O.str) (O.metavar "OUTPUT" <> O.value Nothing <> O.help "The output file path: defaults to stdout")
 
 
-command :: O.Parser Command
-command =
-  O.subparser . mconcat $
+command :: O.Parser (Command, Verbose)
+command = do
+  cmd <- O.subparser . mconcat $
     [ O.command "assemble" (O.info assembleP (O.progDesc "Assemble to Plutus bytecode, and display the HEX")),
       O.command "run" (O.info runP (O.progDesc "Run the Pluto code in Plutus evauator")),
       O.command "eval" (O.info runBindingP (O.progDesc "Evaluate a let binding in the program"))
     ]
+  verbose <- Verbose <$> O.switch (O.long "verbose" <> O.short 'v' <> O.help "Dump ASTs along the way")
+  pure (cmd, verbose)
   where
     assembleP =
       CommandAssemble
@@ -84,7 +88,7 @@ command =
         bimap (T.unpack . getErrorMessage) (void . AST.unProgram) $ Assemble.parseProgram "<cli-arg>" s
 
 
-commandInfo :: O.ParserInfo Command
+commandInfo :: O.ParserInfo (Command, Verbose)
 commandInfo =
   O.info (command O.<**> O.helper)
    ( O.fullDesc
@@ -123,38 +127,42 @@ logError = \case
       liftIO $ hPutStrLn stderr $ prefix <> ": " <> T.unpack msg
 
 
-runCommand :: forall m. (MonadIO m, MonadError Error m) => Command -> m ()
-runCommand cmd = do
+runCommand :: forall m. (MonadIO m, MonadError Error m) => Command -> Verbose -> m ()
+runCommand cmd (Verbose verbose) = do
   case cmd of
     CommandAssemble mInPath mOutPath -> do
       bin <- assembleInput mInPath
       writeObjectCode mOutPath bin
     CommandRun mInPath -> do
       ast <- parseInput mInPath
-      -- TODO: Depending on the need, enable/disable individiual dumps in CLI arguments.
-      logHeader "AST"
-      logShower $ void ast
+      when verbose $ do
+        logHeader "AST"
+        logShower $ void ast
       prog <- liftError ErrorAssembling $ Assemble.translate ast
-      logHeader "UPLC"
-      logShower $ Scripts.unScript prog
-      logHeader "UPLC (pretty)"
-      logInfo $ Pretty.display $ Scripts.unScript prog
+      when verbose $ do
+        logHeader "UPLC"
+        logShower $ Scripts.unScript prog
+        logHeader "UPLC (pretty)"
+        logInfo $ Pretty.display $ Scripts.unScript prog
       (exBudget, traces, res) <- liftError ErrorEvaluating $ Evaluate.eval prog
-      logHeader "ExBudget"
-      liftIO $ print exBudget
-      logHeader "Script traces"
-      forM_ traces $ \trace ->
-        logInfo trace
-      logHeader "Script result"
+      when verbose $ do
+        logHeader "ExBudget"
+        liftIO $ print exBudget
+        logHeader "Script traces"
+        forM_ traces $ \trace ->
+          logInfo trace
+        logHeader "Script result"
       liftIO $ print res
     CommandEval mInPath name args -> do
       ast <- void <$> parseInput mInPath
       ast' <- liftError ErrorOther $ Transform.applyToplevelBinding name args ast
-      logHeader "AST (transformed)"
-      logShower ast'
+      when verbose $ do
+        logHeader "AST (transformed)"
+        logShower ast'
       script <- liftError ErrorAssembling $ Assemble.translate ast'
       (_, _, res) <- liftError ErrorEvaluating $ Evaluate.eval script
-      logHeader $ "Result of applying " <> AST.getName name <> " on " <> T.pack (show args) <> ":"
+      when verbose $ do
+        logHeader $ "Result of applying " <> AST.getName name <> " on " <> T.pack (show args) <> ":"
       liftIO $ print res
   where
     logHeader s = logInfo ("\n" <> s) >> logInfo (T.replicate (T.length s) "-")
@@ -181,8 +189,8 @@ writeObjectCode Nothing bs =
 
 main :: IO ()
 main = do
-  cmd <- O.execParser commandInfo
-  runExceptT (runCommand cmd) >>= \case
+  (cmd, verbose) <- O.execParser commandInfo
+  runExceptT (runCommand cmd verbose) >>= \case
     Left err ->
       logError err
     Right () ->

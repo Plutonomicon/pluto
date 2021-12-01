@@ -190,19 +190,21 @@ ghcid -T PlutusCore.Assembler.EntryPoint.main --setup ":set args run examples/he
 To run the HelloWorld example,
 
 ```
-cabal run pluto -- run examples/hello.pluto
+cabal run pluto -- -v run examples/hello.pluto
 ```
+
+(The `-v` option dumps intermediate ASTs)
 
 To evaluate a top-level binding with (optional) arguments. For example, this command evalutes the `greet` function from `hello.pluto` by applying it with the two given arguments.
 
 ```
-cabal run pluto -- eval examples/hello.pluto greet '"Bonjour"' '"Charles"'
+cabal run pluto -- -v eval examples/hello.pluto greet '"Bonjour"' '"Charles"'
 ```
 
 Top-level variables can also be accessed by ignoring the arguments:
 
 ```
-cabal run pluto -- eval examples/hello.pluto defaultGreeting
+cabal run pluto -- -v eval examples/hello.pluto defaultGreeting
 ```
 
 To only assemble the Pluto program into a Plutus bytecode:

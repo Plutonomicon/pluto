@@ -23,7 +23,7 @@ module PlutusCore.Assembler.Prelude
 
 import           Control.Applicative  (Applicative (pure), liftA2, (<*>), (<|>))
 import           Control.Arrow        (first, second, (***))
-import           Control.Monad        (forM_, guard, mzero, void, (<=<))
+import           Control.Monad        (forM_, guard, mzero, void, when, (<=<))
 import           Control.Monad.Except (MonadError (throwError),
                                        MonadIO (liftIO), runExceptT)
 import           Data.Bifunctor       (bimap)
