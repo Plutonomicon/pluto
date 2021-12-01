@@ -12,7 +12,7 @@
 
 ### System requirements
 
-Your system must have Nix installed in order to build `pluto`. Currently, there are no binary distributions of `pluto`; you must build from source.
+Your system must have Nix installed in order to build `pluto`. Currently, there are no binary distributions of `pluto`; you must build from source. See https://nixos.org/download.html for instructions to install Nix.
 
 #### Nix flakes (optional)
 
