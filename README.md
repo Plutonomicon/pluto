@@ -120,3 +120,9 @@ To only assemble the Pluto program into a Plutus bytecode:
 ```
 cabal run pluto -- assemble examples/hello.pluto
 ```
+
+For rapid compilation feedback cycle, Ghcid can be run as follows,
+
+```
+ghcid -T PlutusCore.Assembler.EntryPoint.main --setup ":set args run examples/hello.pluto"
+```
