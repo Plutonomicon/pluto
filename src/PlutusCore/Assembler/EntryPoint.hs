@@ -44,7 +44,9 @@ data Command
     (Maybe InputFilePath)
   | CommandRunBinding
     (Maybe InputFilePath)
+    -- Variable name in the top-level binding
     AST.Name
+    -- Argument to the lambda bound by the variable
     (AST.Term ())
 
 
@@ -149,14 +151,11 @@ runCommand cmd = do
       liftIO $ print res
     CommandRunBinding mInPath name arg -> do
       ast <- void <$> parseInput mInPath
-      liftError ErrorOther (Transform.queryTopLevelBinding name ast) >>= \case
-        Nothing -> throwError $ ErrorOther $ "Var '" <> AST.getName name <> "' not found"
-        Just _bindingTerm -> do
-          ast' <- liftError ErrorOther $ Transform.replaceLetBody (Transform.applyVarWithString name arg) ast
-          logShower ast'
-          prog <- liftError ErrorAssembling $ Assemble.translate ast'
-          (_, _, res) <- liftError ErrorEvaluating $ Evaluate.eval prog
-          liftIO $ print res
+      ast' <- liftError ErrorOther $ Transform.applyToplevelBoundLambdaWith name arg ast
+      logShower ast'
+      script <- liftError ErrorAssembling $ Assemble.translate ast'
+      (_, _, res) <- liftError ErrorEvaluating $ Evaluate.eval script
+      liftIO $ print res
   where
     logHeader s = logInfo ("\n" <> s) >> logInfo (T.replicate (T.length s) "-")
     liftError f = either (throwError . f) pure

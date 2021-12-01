@@ -31,7 +31,7 @@ import           Data.Either          (either)
 import           Data.Either.Extra    (eitherToMaybe)
 import           Data.List            (concat, find, length, unzip)
 import           Data.Map             (Map)
-import           Data.Maybe           (maybe)
+import           Data.Maybe           (mapMaybe, maybe)
 import           Data.Text            (Text)
 import           Prelude              (Bool (False, True), Bounded, Char,
                                        Either (Left, Right), Enum, Eq,

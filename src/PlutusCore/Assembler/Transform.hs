@@ -1,34 +1,48 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies      #-}
 
 -- | Functions that query and transform the Pluto AST in various ways
 module PlutusCore.Assembler.Transform
-  ( replaceLetBody
-  , queryTopLevelBinding
-  , applyVarWithString
-  ) where
+  ( applyToplevelBoundLambdaWith,
+  )
+where
 
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Types.AST
 
-replaceLetBody :: Term ann -> Program ann -> Either Text (Program ann)
-replaceLetBody newBody = \case
+-- | Return a new program that applies a bound lambda with the given argument
+--
+-- The lambda must be bound in a top-level Let binding.
+applyToplevelBoundLambdaWith ::
+  -- | Variable name of the bound lambda
+  Name ->
+  -- | Argument to apply the lambda with
+  Term () ->
+  -- | The program with the let binding.
+  --
+  -- The Let body of this program will be discarded.
+  Program () ->
+  -- | The new program that retains the let bindings, but with a new body that
+  -- applies the lambda.
+  Either Text (Program ())
+applyToplevelBoundLambdaWith var arg = \case
   Program (Let ann bindings _oldBody) ->
-    pure $ Program (Let ann bindings newBody)
+    case getBoundLambda var `mapMaybe` bindings of
+      [_lambdaTerm] ->
+        -- TODO: Use lambdaTerm to process nested lambdas, for handling n-arity
+        -- functions with n>1
+        pure $
+          Program $
+            Let ann bindings $
+              Apply () (Var () var) arg
+      _ -> throwError $ "expected a lambda bound with name: " <> getName var
   _ ->
     throwError "expected top-level let binding"
-
-queryTopLevelBinding :: Name -> Program ann -> Either Text (Maybe (Term ann))
-queryTopLevelBinding var = \case
-  Program (Let _ann bindings _body) ->
-    pure $ do
-      Binding _ _ term <- find (\(Binding _ name _) -> name == var) bindings
-      pure term
-  _ ->
-    throwError "expected top-level let binding"
-
-applyVarWithString :: Name -> Term () -> Term ()
-applyVarWithString name = Apply
-    ()
-    (Var () name)
+  where
+    getBoundLambda k (Binding _ k' val) = do
+      guard $ k == k'
+      case val of
+        (Lambda _ _ term) -> pure term
+        _                 -> Nothing
