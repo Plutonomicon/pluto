@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE ViewPatterns      #-}
 
 
 module PlutusCore.Assembler.EntryPoint (main) where
@@ -22,15 +23,17 @@ import qualified Plutus.V1.Ledger.Scripts                as Scripts
 import qualified PlutusCore.Assembler.Assemble           as Assemble
 import qualified PlutusCore.Assembler.Evaluate           as Evaluate
 import           PlutusCore.Assembler.Prelude
+import qualified PlutusCore.Assembler.Transform          as Transform
+import qualified PlutusCore.Assembler.Types.AST          as AST
 import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
 import qualified PlutusCore.Pretty                       as Pretty
 import qualified Shower
 
 
-newtype InputFilePath = InputFilePath FilePath
+newtype InputFilePath = InputFilePath { getInputFilePath :: FilePath }
 
 
-newtype OutputFilePath = OutputFilePath FilePath
+newtype OutputFilePath = OutputFilePath { _getOutputFilePath :: FilePath }
 
 
 data Command
@@ -41,8 +44,8 @@ data Command
     (Maybe InputFilePath)
   | CommandRunBinding
     (Maybe InputFilePath)
-    Text
-    [Text]
+    AST.Name
+    (AST.Term ())
 
 
 inputFilePath :: O.Parser (Maybe InputFilePath)
@@ -73,8 +76,12 @@ command =
     runBindingP =
       CommandRunBinding
       <$> inputFilePath
-      <*> O.strArgument (O.metavar "BINDING" <> O.help "Name of the variable bound in the let block")
-      <*> O.many (O.strArgument $ O.metavar "ARG")
+      <*> fmap AST.Name (O.strArgument (O.metavar "BINDING" <> O.help "Name of the variable bound in the let block"))
+      <*> O.argument termReader (O.metavar "ARG")
+    termReader :: O.ReadM (AST.Term ())
+    termReader =
+      O.eitherReader $ \(T.pack -> s) ->
+        bimap (T.unpack . getErrorMessage) (void . AST.unProgram) $ Assemble.parseProgram "<cli-arg>" s
 
 
 commandInfo :: O.ParserInfo Command
@@ -92,37 +99,38 @@ data Error
   = ErrorParsing ErrorMessage
   | ErrorAssembling ErrorMessage
   | ErrorEvaluating Evaluate.ScriptError
+  | ErrorOther Text
   deriving (Eq, Show)
 
 logInfo :: MonadIO m => Text -> m ()
-logInfo s = 
+logInfo s =
   liftIO $ putStrLn $ T.unpack s
 
 -- | Like `logInfo` but displays the value pretty-printed using shower.
 logShower :: (MonadIO m, Show a) => a -> m ()
-logShower = 
+logShower =
   logInfo . T.pack . Shower.shower
 
 logError :: MonadIO m => Error -> m ()
 logError = \case
-  ErrorParsing (ErrorMessage em)    -> f "parser" em
-  ErrorAssembling (ErrorMessage em) -> f "assembler" em
-  ErrorEvaluating em                -> f "eval" (T.pack $ show em)
+  ErrorParsing (ErrorMessage em)    -> f (Just "parser") em
+  ErrorAssembling (ErrorMessage em) -> f (Just "assembler") em
+  ErrorEvaluating em                -> f (Just "eval") (T.pack $ show em)
+  ErrorOther em                     -> f Nothing em
   where
-    f name msg =
-      liftIO $ hPutStrLn stderr $ "Error(" <> name <> "): " <> T.unpack msg
+    f mName msg = do
+      let prefix = maybe "Error" (\name -> "Error(" <> name <> ")") mName
+      liftIO $ hPutStrLn stderr $ prefix <> ": " <> T.unpack msg
 
 
 runCommand :: forall m. (MonadIO m, MonadError Error m) => Command -> m ()
 runCommand cmd = do
   case cmd of
     CommandAssemble mInPath mOutPath -> do
-      text <- getSourceCode mInPath
-      prog <- liftError ErrorAssembling $ Assemble.assemble text
-      writeObjectCode mOutPath prog
+      bin <- assembleInput mInPath
+      writeObjectCode mOutPath bin
     CommandRun mInPath -> do
-      text <- liftIO $ getSourceCode mInPath
-      ast <- liftError ErrorParsing $ Assemble.parseProgram text
+      ast <- parseInput mInPath
       -- TODO: Depending on the need, enable/disable individiual dumps in CLI arguments.
       logHeader "AST"
       logShower $ void ast
@@ -139,17 +147,25 @@ runCommand cmd = do
         logInfo trace
       logHeader "Script result"
       liftIO $ print res
-    CommandRunBinding mInPath fnName fnArgs -> do
-      text <- getSourceCode mInPath
-      ast <- liftError ErrorParsing $ Assemble.parseProgram text
-      logShower $ void ast
-      prog <- liftError ErrorAssembling $ Assemble.translate ast
-      (_, _, res) <- liftError ErrorEvaluating $ Evaluate.eval prog
-      liftIO $ print res
-      logInfo $ "TODO: Unsupported " <> fnName <> T.pack (show fnArgs)
+    CommandRunBinding mInPath name arg -> do
+      ast <- void <$> parseInput mInPath
+      liftError ErrorOther (Transform.queryTopLevelBinding name ast) >>= \case
+        Nothing -> throwError $ ErrorOther $ "Var '" <> AST.getName name <> "' not found"
+        Just _bindingTerm -> do
+          ast' <- liftError ErrorOther $ Transform.replaceLetBody (Transform.applyVarWithString name arg) ast
+          logShower ast'
+          prog <- liftError ErrorAssembling $ Assemble.translate ast'
+          (_, _, res) <- liftError ErrorEvaluating $ Evaluate.eval prog
+          liftIO $ print res
   where
     logHeader s = logInfo ("\n" <> s) >> logInfo (T.replicate (T.length s) "-")
     liftError f = either (throwError . f) pure
+    parseInput mInPath = do
+      text <- liftIO $ getSourceCode mInPath
+      liftError ErrorParsing $ Assemble.parseProgram (maybe "<stdin>" getInputFilePath mInPath) text
+    assembleInput mInPath = do
+      text <- liftIO $ getSourceCode mInPath
+      liftError ErrorAssembling $ Assemble.assemble (maybe "<stdin>" getInputFilePath mInPath) text
 
 
 getSourceCode :: MonadIO m => Maybe InputFilePath -> m Text

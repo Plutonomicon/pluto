@@ -6,11 +6,13 @@ module PlutusCore.Assembler.Prelude
   , module Control.Arrow
   , module Control.Monad
   , module Control.Monad.Except
+  , module Data.Bifunctor
   , module Data.ByteString
   , module Data.Either
   , module Data.Either.Extra
   , module Data.List
   , module Data.Map
+  , module Data.Maybe
   , module Data.Text
   , module Prelude
   , (<$$>)
@@ -23,11 +25,13 @@ import           Control.Arrow        (first, second, (***))
 import           Control.Monad        (forM_, guard, mzero, void, (<=<))
 import           Control.Monad.Except (MonadError (throwError),
                                        MonadIO (liftIO), runExceptT)
+import           Data.Bifunctor       (bimap)
 import           Data.ByteString      (ByteString)
 import           Data.Either          (either)
 import           Data.Either.Extra    (eitherToMaybe)
-import           Data.List            (concat, length, unzip)
+import           Data.List            (concat, find, length, unzip)
 import           Data.Map             (Map)
+import           Data.Maybe           (maybe)
 import           Data.Text            (Text)
 import           Prelude              (Bool (False, True), Bounded, Char,
                                        Either (Left, Right), Enum, Eq,

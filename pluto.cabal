@@ -18,6 +18,7 @@ library
     PlutusCore.Assembler.Parse
     PlutusCore.Assembler.Prelude
     PlutusCore.Assembler.Tokenize
+    PlutusCore.Assembler.Transform
     PlutusCore.Assembler.Types.AST
     PlutusCore.Assembler.Types.Builtin
     PlutusCore.Assembler.Types.Constant
