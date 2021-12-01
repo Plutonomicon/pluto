@@ -1,7 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 
-module PlutusCore.Assembler.Assemble (assemble, translate) where
+module PlutusCore.Assembler.Assemble (assemble, translate, parseProgram) where
 
 
 import           Codec.Serialise                         (serialise)
@@ -13,14 +13,20 @@ import           PlutusCore.Assembler.Desugar            (desugar)
 import           PlutusCore.Assembler.Parse              (parse)
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Tokenize           (tokenize)
+import           PlutusCore.Assembler.Types.AST          (Program)
 import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage)
+import           Text.Parsec.Pos                         (SourcePos)
 
 
 -- | Either assemble the given code into Plutus bytecode or fail with an error message.
 assemble :: Text -> Either ErrorMessage ByteString
-assemble = fmap (toStrict . serialise) . translate
+assemble = fmap (toStrict . serialise) . translate <=< parseProgram
 
 
 -- | Translatre the given Pluto code into a Plutus Script
-translate :: Text -> Either ErrorMessage Script
-translate txt = Script <$> (desugar . annDeBruijn =<< parse =<< tokenize txt)
+translate :: Program SourcePos -> Either ErrorMessage Script
+translate = fmap Script . (desugar . annDeBruijn)
+
+parseProgram :: Text -> Either ErrorMessage (Program SourcePos)
+parseProgram =
+  parse <=< tokenize
