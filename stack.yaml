@@ -54,6 +54,9 @@ extra-deps:
 - th-extras-0.0.0.4@sha256:2f408c0f427530f36beb19c733a7a57f67b727713f9bb942b64f3b2e0e2932bf,1457
 
 
+- git: https://github.com/monadfix/shower.git
+  commit: 3e02d92e0500e41b4e9932294f4960463a7222d4
+  # nix-sha256: sha256-JGOO02bWpr2cUQdJItu56AeGKfQI4TmrmIkXDqkxe6Q=
 - git: https://github.com/typeclasses/hex-text.git
   commit: 5c737d002ed034a8dc8b39e9ced01b12ebc97ed8
   subdirs:
