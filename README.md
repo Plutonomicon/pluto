@@ -8,11 +8,37 @@
 
 ### System requirements
 
-TODO
+To build `pluto`, you must have Nix 2.4. You can install this on NixOS adding the following
+stanza to your configuration.nix.
+
+```
+nix = {
+  package = pkgs.nixUnstable;
+  extraOptions = ''
+   experimental-features = nix-command flakes
+  '';
+};
+```
+
+Check that your `nix --version` is at least 2.4pre.
+
+To install flakes on non-NixOS, run this to get the latest Nix 2.4:
+
+```
+curl -L https://nixos.org/nix/install | sh
+```
+
+Then edit (or create) `~/.config/nix/nix.conf` to include the following line:
+
+```
+experimental-features = nix-command flakes
+```
 
 ### Build instructions
 
-TODO
+```
+nix build
+```
 
 ### Syntax
 
@@ -81,7 +107,7 @@ InfixBuiltin ::= '+i' | '-i' | '*i' | '/i' | '%i' | '==i' | '<i' | '<=i'
 
 ### Development guidelines
 
-Run `nix-shell` to drop yourself in the development shell. From here, you may launch your text-editor and get access to IDE support via Haskell Language Server, as well use `cabal` to build and run the project.
+Run `nix develop` to drop yourself in the development shell. From here, you may launch your text-editor and get access to IDE support via Haskell Language Server, as well use `cabal` to build and run the project.
 
 To run the HelloWorld example,
 
