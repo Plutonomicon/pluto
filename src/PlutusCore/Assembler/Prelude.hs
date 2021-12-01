@@ -12,6 +12,7 @@ module PlutusCore.Assembler.Prelude
   , module Data.Text
   , module Prelude
   , (<$$>)
+  , letReverse
   ) where
 
 
@@ -37,3 +38,7 @@ import           Prelude             (Bool (False, True), Bounded, Char,
 
 (<$$>) :: ( Functor f, Functor g ) => (a -> b) -> f (g a) -> f (g b)
 f <$$> x = fmap (fmap f) x
+
+-- this gets a special name so it is clear which parts of the code are effected by the let desugaring reversal
+letReverse :: [a] -> [a]
+letReverse = reverse

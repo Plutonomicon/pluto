@@ -60,7 +60,7 @@ desugarTerm =
     AST.Constant _ x -> pure (UPLC.Constant () (desugarConstant x))
     AST.Builtin _ f -> pure (UPLC.Builtin () (desugarBuiltin f))
     AST.Error _ -> pure (UPLC.Error ())
-    AST.Let _ bs x -> desugarLet (reverse bs) x
+    AST.Let _ bs x -> desugarLet (letReverse bs) x
     AST.IfThenElse _ (AST.IfTerm i) (AST.ThenTerm t) (AST.ElseTerm e) ->
       UPLC.Apply ()
         <$> ( UPLC.Apply ()
