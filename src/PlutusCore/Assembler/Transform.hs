@@ -33,7 +33,7 @@ applyToplevelBinding ::
   Either Text (Program ())
 applyToplevelBinding var args = \case
   Program (Let ann bindings _oldBody) ->
-    case getBoundLambda var `mapMaybe` bindings of
+    case getBoundTerm var `mapMaybe` bindings of
       [_boundTerm] -> do
         let newBody = foldl' (Apply ()) (Var () var) args
         pure $ Program $ Let ann bindings newBody
@@ -41,6 +41,6 @@ applyToplevelBinding var args = \case
   _ ->
     throwError "expected top-level let binding"
   where
-    getBoundLambda k (Binding _ k' val) = do
+    getBoundTerm k (Binding _ k' val) = do
       guard $ k == k'
       pure val

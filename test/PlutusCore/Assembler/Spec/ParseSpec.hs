@@ -30,4 +30,4 @@ testParseValidTokenList =
   testProperty "parses a syntactically valid token list" . property $ do
     n <- forAll genRecursionDepth
     (t, tts) <- forAll (genTerm n)
-    (const () <$$> parse ((,fakeSourcePos) <$> tts)) === Right (Program t)
+    (const () <$$> parse "<test>" ((,fakeSourcePos) <$> tts)) === Right (Program t)
