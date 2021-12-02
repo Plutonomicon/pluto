@@ -16,6 +16,8 @@ module PlutusCore.Assembler.Prelude
   , module Data.Maybe
   , module Data.String
   , module Data.Text
+  , module GHC.Base
+  , module GHC.Stack
   , module Prelude
   , (<$$>)
   , letReverse
@@ -37,19 +39,22 @@ import           Data.Map             (Map)
 import           Data.Maybe           (mapMaybe, maybe)
 import           Data.String          (IsString (fromString))
 import           Data.Text            (Text)
+import           GHC.Base             (error)
+import           GHC.Stack            (HasCallStack)
 import           Prelude              (Bool (False, True), Bounded, Char,
                                        Either (Left, Right), Enum, Eq,
-                                       Foldable (foldMap), Functor (fmap), IO,
-                                       Integer, Integral, Maybe (Just, Nothing),
-                                       Monad (return, (>>=)), Monoid (mempty),
-                                       Num ((*), (+), (-)), Ord, Real,
-                                       Show (show), String, all, const, foldl,
-                                       fst, mconcat, negate, reverse, snd, ($),
-                                       (&&), (.), (/=), (<$), (<$>), (<=), (<>),
-                                       (=<<), (==), (>=), (>>), (||))
+                                       Foldable (foldMap, null), Functor (fmap),
+                                       IO, Integer, Integral,
+                                       Maybe (Just, Nothing),
+                                       Monad (return, (>>=)), MonadFail (fail),
+                                       Monoid (mempty), Num ((*), (+), (-)),
+                                       Ord, Real, Show (show), String, all,
+                                       const, flip, foldl, fst, mconcat, negate,
+                                       readFile, reverse, snd, ($), (&&), (.),
+                                       (/=), (<$), (<$>), (<=), (<>), (=<<),
+                                       (==), (>=), (>>), (||))
 
-
-(<$$>) :: ( Functor f, Functor g ) => (a -> b) -> f (g a) -> f (g b)
+(<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
 f <$$> x = fmap (fmap f) x
 
 -- this gets a special name so it is clear which parts of the code are effected by the let desugaring reversal

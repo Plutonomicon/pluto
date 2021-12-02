@@ -4,24 +4,25 @@
 {-# LANGUAGE NoImplicitPrelude   #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell     #-}
 
 module PlutusCore.Assembler.Spec.ExamplesSpec (tests) where
 
-import           Control.Monad.Catch               (MonadThrow, throwM)
 import           Data.Function
-import           Data.Text.IO                      (readFile)
 import qualified Hedgehog.Gen                      as Gen
 import qualified Hedgehog.Range                    as Range
-import qualified PlutusCore                        as PLC
-import           PlutusCore.Assembler.App
-import qualified PlutusCore.Assembler.Assemble     as Assemble
-import qualified PlutusCore.Assembler.Build        as B
-import qualified PlutusCore.Assembler.Evaluate     as E
+import qualified PlutusCore.Assembler.FFI          as FFI
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Spec.Prelude
 import qualified PlutusCore.Assembler.Types.AST    as AST
-import           System.FilePath                   (FilePath)
-import qualified UntypedPlutusCore                 as UPLC
+
+-- FFIs must be declared before tests
+hello :: AST.Program ()
+hello = $(FFI.load "examples/hello.pluto")
+$(FFI.bind 'hello
+  "defaultGreeting" [t|String|])
+$(FFI.bind 'hello
+  "greet" [t|String -> String -> String|])
 
 tests :: TestTree
 tests =
@@ -34,27 +35,15 @@ helloTest :: TestTree
 helloTest =
   testGroup
     "hello.pluto"
-    [ testProperty "accepts diverse greetings" . property $ do
-        -- The script itself
-        helloProg <- loadPlutoMod "examples/hello.pluto"
-        -- Arguments to the 'greet' function
+    [ testProperty "constructs greeting correctly regardless of input" . property $ do
         greeting <- forAll someText
         name <- forAll someText
-        -- Call 'greet' function with the arguments, and compare
-        (helloProg
-          & E.evalToplevelBinding "greet" [B.text greeting, B.text name]
-          & fmap disassembleString)
-          === Right (Just $ greeting <> ", " <> name)
+        greet greeting name === greeting <> ", " <> name
+    , testProperty "default greeting is Hello" . property $ do
+        name <- forAll someText
+        defaultGreeting === "Hello"
+        greet defaultGreeting name === "Hello" <> ", " <> name
     ]
   where
-    someText = Gen.text (Range.linear 3 9) Gen.alpha
+    someText = Gen.string (Range.linear 3 9) Gen.alpha
 
-disassembleString :: UPLC.Term name PLC.DefaultUni fun () -> Maybe Text
-disassembleString = \case
-  (UPLC.Constant () (PLC.Some (PLC.ValueOf PLC.DefaultUniString x))) -> pure x
-  _                                                                  -> Nothing
-
-loadPlutoMod :: (MonadIO m, MonadThrow m) => FilePath -> m (AST.Program ())
-loadPlutoMod fp = do
-  s <- liftIO $ readFile fp
-  either (throwM . ErrorParsing) (pure . void) $ Assemble.parseProgram "<test>" s

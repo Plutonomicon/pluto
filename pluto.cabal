@@ -16,10 +16,11 @@ library
     PlutusCore.Assembler.Desugar
     PlutusCore.Assembler.EntryPoint
     PlutusCore.Assembler.Evaluate
+    PlutusCore.Assembler.FFI
     PlutusCore.Assembler.Parse
     PlutusCore.Assembler.Prelude
     PlutusCore.Assembler.Tokenize
-    PlutusCore.Assembler.Build
+    PlutusCore.Assembler.Haskell
     PlutusCore.Assembler.Types.AST
     PlutusCore.Assembler.Types.Builtin
     PlutusCore.Assembler.Types.Constant
@@ -44,6 +45,7 @@ library
     optparse-applicative,
     parsec,
     shower,
+    template-haskell,
     playground-common,
     plutus-pab,
     plutus-core,
@@ -154,6 +156,8 @@ test-suite spec
     cardano-api -any,
     serialise -any,
     cardano-ledger-alonzo -any,
+    template-haskell,
+    shower,
 
     pluto
 

@@ -13,8 +13,7 @@ module PlutusCore.Assembler.EntryPoint (main) where
 import           Data.Text                               (pack, unpack)
 import qualified Options.Applicative                     as O
 import           System.IO                               (FilePath, getContents,
-                                                          print, readFile,
-                                                          writeFile)
+                                                          print, writeFile)
 import           Text.Hex                                (encodeHex)
 
 import qualified Data.Text                               as T
@@ -29,7 +28,6 @@ import qualified PlutusCore.Pretty                       as Pretty
 
 
 newtype InputFilePath = InputFilePath { getInputFilePath :: FilePath }
-
 
 newtype OutputFilePath = OutputFilePath { _getOutputFilePath :: FilePath }
 
