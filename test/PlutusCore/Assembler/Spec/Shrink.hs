@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
@@ -26,9 +27,9 @@ import           Control.Monad.State                      (State, evalState,
                                                            get, gets, modify,
                                                            put)
 import           Data.Text                                (pack)
-import           Prelude                                  (FilePath, Int, error,
-                                                           fromIntegral, not,
-                                                           print, putStrLn,
+import           Prelude                                  (FilePath, Int, curry,
+                                                           error, fromIntegral,
+                                                           not, print, putStrLn,
                                                            readFile, tail, (!!))
 
 type Result = Either (CekEvaluationException DefaultUni DefaultFun) (UPLC.Term Name DefaultUni DefaultFun ())
@@ -53,11 +54,28 @@ testTactic tactic = testProperty "tactics don't break code" . property $ do
   let shorts' = run <$> shorts
   assert $ all (~= uplc') shorts'
 
-(~=) :: Result -> Result -> Bool
-a ~= b = case (a,b) of
-           (Left _,Left _)   -> True
-           (Right _,Right _) -> True
-           _                 -> False
+class Similar a where
+  (~=) :: a -> a -> Bool
+
+instance Similar Result where
+  a ~= b = case (a,b) of
+           (Left _,Left _)             -> True
+           (Right lValue,Right rValue) -> lValue ~= rValue
+           _                           -> False
+
+instance Similar (UPLC.Term Name DefaultUni DefaultFun ()) where
+  (~=) = curry $ \case
+       (UPLC.Var      () _    ,UPLC.Var      () _    ) -> True
+       (UPLC.Force    () a    ,UPLC.Force    () b    ) -> a ~= b
+       (UPLC.Delay    () a    ,UPLC.Delay    () b    ) -> a ~= b
+       (UPLC.Apply () _ _     ,_                     ) -> True
+       (_                     ,UPLC.Apply () _ _     ) -> True
+       (UPLC.LamAbs   () _ _  ,UPLC.LamAbs   () _ _  ) -> True
+       (UPLC.Builtin  () a    ,UPLC.Builtin  () b    ) -> a == b
+       (UPLC.Constant () a    ,UPLC.Constant () b    ) -> a == b
+       (UPLC.Error    ()      ,UPLC.Error    ()      ) -> True
+       _                                               -> False
+
 
 (/~=) :: Result -> Result -> Bool
 a /~= b = not $ a ~= b
