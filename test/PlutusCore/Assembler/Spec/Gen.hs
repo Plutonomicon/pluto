@@ -13,13 +13,19 @@ module PlutusCore.Assembler.Spec.Gen
   , genConstantAST
   , genTerm
   , genRecursionDepth
+  , genUplc
   ) where
 
 
 import           Data.List                               (intercalate)
 import qualified Hedgehog.Gen                            as Gen
 import qualified Hedgehog.Range                          as Range
+import           Prelude                                 (fromIntegral)
 import qualified PlutusCore.Data                         as Data
+import qualified UntypedPlutusCore.Core.Type             as UPLC
+import qualified PlutusCore.Default                      as PLC
+import           PlutusCore.Default                     (DefaultFun(..), DefaultUni,Some,ValueOf)
+import           PlutusCore.DeBruijn                    (DeBruijn (..),Index (..))
 
 import           PlutusCore.Assembler.ConstantToTokens   (constantToTokens)
 import           PlutusCore.Assembler.Prelude
@@ -36,6 +42,7 @@ import qualified PlutusCore.Assembler.Types.Token        as Tok
 newtype RecursionDepth = RecursionDepth { unRecursionDepth :: Integer }
   deriving (Eq, Show, Ord, Enum, Num, Real, Integral)
 
+type UplcTerm = UPLC.Term DeBruijn DefaultUni DefaultFun ()
 
 genRecursionDepth :: Gen RecursionDepth
 genRecursionDepth = Gen.integral (Range.linear 0 10)
@@ -348,3 +355,101 @@ genConstantTerm :: RecursionDepth -> Gen (Term (), [Token])
 genConstantTerm n = do
   t <- genConstantAST n
   return (AST.Constant () t, constantToTokens t)
+
+genUplc :: Gen UplcTerm
+genUplc = do
+  n <- genRecursionDepth
+  genUplc' n (-1) 
+
+genUplc' :: RecursionDepth -> Integer -> Gen UplcTerm
+genUplc' 0 (-1) = 
+  Gen.choice 
+  [ UPLC.Constant () <$> genConstant
+  , UPLC.Builtin () <$> genUplcBuiltin
+  , return $ UPLC.Error ()
+  ]
+genUplc' 0 level = 
+  Gen.choice
+  [ UPLC.Var () . DeBruijn . Index . fromIntegral <$> Gen.integral (Range.linear 0 level)
+  , UPLC.Constant () <$> genConstant
+  , UPLC.Builtin () <$> genUplcBuiltin
+  , return $ UPLC.Error ()
+  ]
+genUplc' n level = let
+  next = genUplc' (n-1) level
+                    in 
+  Gen.choice
+  [ UPLC.LamAbs () (DeBruijn (Index 0)) <$> genUplc' (n-1) (level+1)
+  , UPLC.Force () <$> next
+  , UPLC.Delay () <$> next
+  , UPLC.Apply () <$> next <*> next
+  , genUplc' 0 level
+  ]
+
+
+genConstant :: Gen (Some (ValueOf DefaultUni))
+genConstant =
+    Gen.choice
+    [ PLC.Some . PLC.ValueOf PLC.DefaultUniInteger    <$> genInteger
+    , PLC.Some . PLC.ValueOf PLC.DefaultUniByteString <$> genByteString
+    , PLC.Some . PLC.ValueOf PLC.DefaultUniString     <$> genText
+    , PLC.Some . PLC.ValueOf PLC.DefaultUniUnit       <$> mempty
+    , PLC.Some . PLC.ValueOf PLC.DefaultUniBool       <$> Gen.choice (return <$> [True,False])
+    -- , PLC.Some . PLC.ValueOf PLC.DefaultUniData       <$> genData
+    ]
+
+genUplcBuiltin :: Gen DefaultFun
+genUplcBuiltin = Gen.choice $ return <$>
+  [ AddInteger
+  , SubtractInteger
+  , MultiplyInteger
+  , DivideInteger
+  , QuotientInteger
+  , RemainderInteger
+  , ModInteger
+  , EqualsInteger
+  , LessThanInteger
+  , LessThanEqualsInteger
+  , AppendByteString
+  , ConsByteString
+  , SliceByteString
+  , LengthOfByteString
+  , IndexByteString
+  , EqualsByteString
+  , LessThanByteString
+  , LessThanEqualsByteString
+  , Sha2_256
+  , Sha3_256
+  , Blake2b_256
+  , VerifySignature
+  , AppendString
+  , EqualsString
+  , EncodeUtf8
+  , DecodeUtf8
+  , IfThenElse
+  , ChooseUnit
+  , Trace
+  , FstPair
+  , SndPair
+  , ChooseList
+  , MkCons
+  , HeadList
+  , TailList
+  , NullList
+  , ChooseData
+  , ConstrData
+  , MapData
+  , ListData
+  , IData
+  , BData
+  , UnConstrData
+  , UnMapData
+  , UnListData
+  , UnIData
+  , UnBData
+  , EqualsData
+  , MkPairData
+  , MkNilData
+  , MkNilPairData
+  ]
+  -- TODO generate builtins

@@ -13,6 +13,7 @@ import qualified PlutusCore.Assembler.Spec.AnnDeBruijnSpec as AnnDeBruijn
 import qualified PlutusCore.Assembler.Spec.ParseSpec       as Parse
 import           PlutusCore.Assembler.Spec.Prelude
 import qualified PlutusCore.Assembler.Spec.TokenizeSpec    as Tokenize
+import qualified PlutusCore.Assembler.Spec.Shrink          as Shrink
 
 
 main :: IO ()
@@ -32,4 +33,5 @@ tests =
   [ AnnDeBruijn.tests
   , Parse.tests
   , Tokenize.tests
+  , Shrink.tests
   ]

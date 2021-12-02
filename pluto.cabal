@@ -118,6 +118,7 @@ test-suite spec
     PlutusCore.Assembler.Spec.Gen
     PlutusCore.Assembler.Spec.Prelude
     PlutusCore.Assembler.Spec.ParseSpec
+    PlutusCore.Assembler.Spec.Shrink
     PlutusCore.Assembler.Spec.TokenizeSpec
 
   build-depends:
