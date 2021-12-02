@@ -1,31 +1,35 @@
--- {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 module PlutusCore.Assembler.Spec.Shrink ( tests , testScriptTact) where
 
---import           PlutusCore.Assembler.Prelude
-
+import qualified PlutusCore                               as PLC
+import           PlutusCore.Assembler.AnnDeBruijn
+import           PlutusCore.Assembler.Desugar
+import           PlutusCore.Assembler.Parse
+import           PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Shrink              (SafeTactic, Tactic,
+                                                           Term, removeDeadCode,
+                                                           subs)
+import           PlutusCore.Assembler.Spec.Gen            (genUplc)
 import           PlutusCore.Assembler.Spec.Prelude
-import           PlutusCore.Assembler.Spec.Gen (genUplc)
-import           PlutusCore.Assembler.Shrink (Tactic,SafeTactic,Term,subs,removeDeadCode)
-import qualified UntypedPlutusCore.Core.Type  as UPLC
-import           UntypedPlutusCore.Evaluation.Machine.Cek 
-import           UntypedPlutusCore.DeBruijn (Index (..))
-import           PlutusCore.Default           (DefaultFun, DefaultUni)
-import           PlutusCore.Name              (Name)
-import qualified PlutusCore as PLC 
+import           PlutusCore.Assembler.Tokenize
+import           PlutusCore.Default                       (DefaultFun,
+                                                           DefaultUni)
+import           PlutusCore.Name                          (Name)
+import qualified UntypedPlutusCore.Core.Type              as UPLC
+import           UntypedPlutusCore.DeBruijn               (Index (..))
+import           UntypedPlutusCore.Evaluation.Machine.Cek
 
-import Control.Monad.Except
-
-import Data.Text (pack)
-import PlutusCore.Assembler.Desugar
-import PlutusCore.Assembler.Parse
-import PlutusCore.Assembler.Tokenize
-import PlutusCore.Assembler.AnnDeBruijn
-import Data.Bifunctor (first)
-import Control.Monad.State (State,get,put,modify,evalState,gets)
-
--- import Debug.Trace
+import           Control.Monad.Except
+import           Control.Monad.State                      (State, evalState,
+                                                           get, gets, modify,
+                                                           put)
+import           Data.Text                                (pack)
+import           Prelude                                  (FilePath, Int, error,
+                                                           fromIntegral, not,
+                                                           print, putStrLn,
+                                                           readFile, tail, (!!))
 
 type Result = Either (CekEvaluationException DefaultUni DefaultFun) (UPLC.Term Name DefaultUni DefaultFun ())
 
@@ -51,16 +55,15 @@ testTactic tactic = testProperty "tactics don't break code" . property $ do
 
 (~=) :: Result -> Result -> Bool
 a ~= b = case (a,b) of
-           (Left _,Left _) -> True
+           (Left _,Left _)   -> True
            (Right _,Right _) -> True
-           _ -> False
+           _                 -> False
 
 (/~=) :: Result -> Result -> Bool
 a /~= b = not $ a ~= b
 
 run :: Term -> Result
 run = evaluateWithCek . unDeBruijn
-
 
 unDeBruijn :: Term -> UPLC.Term Name DefaultUni DefaultFun ()
 unDeBruijn = (`evalState` ([],names)) . unDeBruijn'
@@ -79,7 +82,7 @@ unDeBruijn' = \case
   UPLC.Apply () fTerm xTerm -> UPLC.Apply () <$> unDeBruijn' fTerm <*> unDeBruijn' xTerm
   UPLC.LamAbs () _ term -> do
     name <- scopeName
-    term' <- unDeBruijn' term 
+    term' <- unDeBruijn' term
     modify $ first tail -- unscope the name
     return $ UPLC.LamAbs () name term'
   UPLC.Builtin () b  -> return $ UPLC.Builtin  () b
@@ -98,22 +101,6 @@ scopeName = do
       return new
     [] -> error "Unreachable"
 
-  {-
-format :: Term -> RenameM ( UPLC.Term Name DefaultUni DefaultFun () )
-format term = unDeBruijnTerm (traceShowId $ fakeNames term)
-
-fakeNames :: Term -> UPLC.Term NamedDeBruijn DefaultUni DefaultFun ()
-fakeNames = \case
-  UPLC.Var () name -> UPLC.Var () (fakeNameDeBruijn name)
-  UPLC.Force () term -> UPLC.Force () (fakeNames term)
-  UPLC.Delay () term -> UPLC.Delay () (fakeNames term)
-  UPLC.Apply () fTerm xTerm -> UPLC.Apply () (fakeNames fTerm) (fakeNames xTerm)
-  UPLC.LamAbs () name term -> UPLC.LamAbs () (fakeNameDeBruijn name) (fakeNames term)
-  UPLC.Builtin () b -> UPLC.Builtin () b 
-  UPLC.Constant () c -> UPLC.Constant () c
-  UPLC.Error () -> UPLC.Error ()
-  -}
-
 evaluateWithCek :: UPLC.Term Name DefaultUni DefaultFun () -> Either (CekEvaluationException DefaultUni DefaultFun) (UPLC.Term Name DefaultUni DefaultFun ())
 evaluateWithCek = evaluateCekNoEmit PLC.defaultCekParameters
 
@@ -121,13 +108,13 @@ testScriptTact :: FilePath -> Tactic -> IO ()
 testScriptTact scriptFilePath tact = do
   txt <- pack <$> readFile scriptFilePath
   let uplc' = desugar . annDeBruijn =<< parse =<< tokenize txt
-  case uplc' of 
+  case uplc' of
     Left e -> print e
     Right (UPLC.Program () _ uplc) -> do
       let res = run uplc
       printUplcRes (uplc,res)
-      let bad = [ (shortening,res') 
-                | shortening <- tact uplc 
+      let bad = [ (shortening,res')
+                | shortening <- tact uplc
                 , let res' = run shortening , res /~= res' ]
       putStrLn "bad results:"
       forM_ bad printUplcRes
@@ -142,5 +129,4 @@ printUplcRes (uplc,res) = do
   putStrLn "result"
   print res
   putStrLn ""
-
 

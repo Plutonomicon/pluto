@@ -2,7 +2,7 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module PlutusCore.Assembler.Shrink 
+module PlutusCore.Assembler.Shrink
   (shrinkProgram -- all exports besides shrinkProgram are exported for testing
   ,Tactic
   ,SafeTactic
@@ -18,14 +18,12 @@ import           Data.List                    (sortOn)
 import           Plutus.V1.Ledger.Scripts     (Script (..))
 import qualified PlutusCore.Core              as PLC
 import           Prelude                      (Int, drop, fromIntegral, head,
-                                               id, map, take, (++),(>),min)
+                                               id, map, min, take, (++), (>))
 import qualified UntypedPlutusCore.Core.Type  as UPLC
 
 import           PlutusCore.Assembler.Prelude
-import           PlutusCore.DeBruijn          (DeBruijn (..),Index (..))
-import           PlutusCore.Default           (DefaultFun(..), DefaultUni)
-
-import Debug.Trace
+import           PlutusCore.DeBruijn          (DeBruijn (..), Index (..))
+import           PlutusCore.Default           (DefaultFun (..), DefaultUni)
 
 type Term    = UPLC.Term    DeBruijn DefaultUni DefaultFun ()
 type Program = UPLC.Program DeBruijn DefaultUni DefaultFun ()
@@ -70,9 +68,7 @@ shrinkProgram :: Program -> Program
 shrinkProgram (UPLC.Program ann version term) = UPLC.Program ann version (shrinkTerm term)
 
 shrinkTerm :: Term -> Term
-shrinkTerm t = let
-  t' = runShrink defaultShrinkParams t
-    in trace (show t ++ "\nshrank to\n" ++ show t') t'
+shrinkTerm = runShrink defaultShrinkParams
 
 runShrink :: ShrinkParams -> Term -> Term
 runShrink sp = runShrink' sp . return
@@ -198,47 +194,47 @@ whnf = \case
   UPLC.LamAbs{} -> Safe
   UPLC.Apply _ (UPLC.LamAbs _ name lTerm) valTerm -> case whnf valTerm of
                                                        Err -> Err
-                                                       res -> min res $ 
+                                                       res -> min res $
                                                           whnf (appBind name valTerm lTerm)
   UPLC.Apply _ (UPLC.Apply _ (UPLC.Builtin _ builtin) arg1) arg2 -> if safe2Arg builtin
                                                                        then min (whnf arg1) (whnf arg2)
                                                                        else min Unclear $ min (whnf arg1) (whnf arg2)
   UPLC.Apply _ fTerm xTerm -> min Unclear $ min (whnf fTerm) (whnf xTerm)
     -- it should be possible to make this clear more often
-    -- ie. a case over builtins 
+    -- ie. a case over builtins
   UPLC.Force _ (UPLC.Delay _ term) -> whnf term
   UPLC.Force{} -> Unclear
   UPLC.Delay{} -> Safe
   UPLC.Constant{} -> Safe
-  UPLC.Builtin{} -> Safe 
+  UPLC.Builtin{} -> Safe
   UPLC.Error{} -> Err
 
 safe2Arg :: DefaultFun -> Bool
 safe2Arg = \case
-  AddInteger -> True
-  SubtractInteger -> True
-  MultiplyInteger -> True
-  EqualsInteger -> True
-  LessThanInteger -> True
-  LessThanEqualsInteger -> True
-  AppendByteString -> True
-  ConsByteString -> True
-  IndexByteString -> True
-  EqualsByteString -> True
-  LessThanByteString -> True
+  AddInteger               -> True
+  SubtractInteger          -> True
+  MultiplyInteger          -> True
+  EqualsInteger            -> True
+  LessThanInteger          -> True
+  LessThanEqualsInteger    -> True
+  AppendByteString         -> True
+  ConsByteString           -> True
+  IndexByteString          -> True
+  EqualsByteString         -> True
+  LessThanByteString       -> True
   LessThanEqualsByteString -> True
-  VerifySignature -> True
-  AppendString -> True
-  EqualsString -> True
-  ChooseUnit -> True
-  Trace -> True
-  FstPair -> True
-  SndPair -> True
-  MkCons -> True
-  ConstrData -> True
-  EqualsData -> True
-  MkPairData -> True
-  _ -> False
+  VerifySignature          -> True
+  AppendString             -> True
+  EqualsString             -> True
+  ChooseUnit               -> True
+  Trace                    -> True
+  FstPair                  -> True
+  SndPair                  -> True
+  MkCons                   -> True
+  ConstrData               -> True
+  EqualsData               -> True
+  MkPairData               -> True
+  _                        -> False
 
 -- Tactics
 

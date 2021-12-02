@@ -21,11 +21,7 @@ import           Data.List                               (intercalate)
 import qualified Hedgehog.Gen                            as Gen
 import qualified Hedgehog.Range                          as Range
 import           Prelude                                 (fromIntegral)
-import qualified PlutusCore.Data                         as Data
-import qualified UntypedPlutusCore.Core.Type             as UPLC
-import qualified PlutusCore.Default                      as PLC
-import           PlutusCore.Default                     (DefaultFun(..), DefaultUni,Some,ValueOf)
-import           PlutusCore.DeBruijn                    (DeBruijn (..),Index (..))
+
 
 import           PlutusCore.Assembler.ConstantToTokens   (constantToTokens)
 import           PlutusCore.Assembler.Prelude
@@ -36,6 +32,14 @@ import qualified PlutusCore.Assembler.Types.AST          as AST
 import qualified PlutusCore.Assembler.Types.InfixBuiltin as InfixBuiltin
 import           PlutusCore.Assembler.Types.Token        (Token (..))
 import qualified PlutusCore.Assembler.Types.Token        as Tok
+import qualified PlutusCore.Data                         as Data
+import           PlutusCore.DeBruijn                     (DeBruijn (..),
+                                                          Index (..))
+import           PlutusCore.Default                      (DefaultFun (..),
+                                                          DefaultUni, Some,
+                                                          ValueOf)
+import qualified PlutusCore.Default                      as PLC
+import qualified UntypedPlutusCore.Core.Type             as UPLC
 
 
 -- Passed to a generator, indicates the maximum recursion depth its children should have.
@@ -359,16 +363,16 @@ genConstantTerm n = do
 genUplc :: Gen UplcTerm
 genUplc = do
   n <- genRecursionDepth
-  genUplc' n (-1) 
+  genUplc' n (-1)
 
 genUplc' :: RecursionDepth -> Integer -> Gen UplcTerm
-genUplc' 0 (-1) = 
-  Gen.choice 
+genUplc' 0 (-1) =
+  Gen.choice
   [ UPLC.Constant () <$> genConstant
   , UPLC.Builtin () <$> genUplcBuiltin
   , return $ UPLC.Error ()
   ]
-genUplc' 0 level = 
+genUplc' 0 level =
   Gen.choice
   [ UPLC.Var () . DeBruijn . Index . fromIntegral <$> Gen.integral (Range.linear 0 level)
   , UPLC.Constant () <$> genConstant
@@ -377,7 +381,7 @@ genUplc' 0 level =
   ]
 genUplc' n level = let
   next = genUplc' (n-1) level
-                    in 
+                    in
   Gen.choice
   [ UPLC.LamAbs () (DeBruijn (Index 0)) <$> genUplc' (n-1) (level+1)
   , UPLC.Force () <$> next
@@ -385,7 +389,6 @@ genUplc' n level = let
   , UPLC.Apply () <$> next <*> next
   , genUplc' 0 level
   ]
-
 
 genConstant :: Gen (Some (ValueOf DefaultUni))
 genConstant =
@@ -395,7 +398,7 @@ genConstant =
     , PLC.Some . PLC.ValueOf PLC.DefaultUniString     <$> genText
     , PLC.Some . PLC.ValueOf PLC.DefaultUniUnit       <$> mempty
     , PLC.Some . PLC.ValueOf PLC.DefaultUniBool       <$> Gen.choice (return <$> [True,False])
-    -- , PLC.Some . PLC.ValueOf PLC.DefaultUniData       <$> genData
+    , PLC.Some . PLC.ValueOf PLC.DefaultUniData       <$> (genRecursionDepth >>= genData)
     ]
 
 genUplcBuiltin :: Gen DefaultFun
@@ -452,4 +455,3 @@ genUplcBuiltin = Gen.choice $ return <$>
   , MkNilData
   , MkNilPairData
   ]
-  -- TODO generate builtins

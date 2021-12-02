@@ -10,9 +10,9 @@ import           Plutus.V1.Ledger.Scripts                (Script (..))
 
 import           PlutusCore.Assembler.AnnDeBruijn        (annDeBruijn)
 import           PlutusCore.Assembler.Desugar            (desugar)
-import           PlutusCore.Assembler.Shrink             (shrinkProgram)
 import           PlutusCore.Assembler.Parse              (parse)
 import           PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Shrink             (shrinkProgram)
 import           PlutusCore.Assembler.Tokenize           (tokenize)
 import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage)
 
