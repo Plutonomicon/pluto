@@ -60,7 +60,7 @@ annBindings m [] = ( [], m )
 annBindings m ( AST.Binding a x t : bs ) =
   let m' = addNameToMap m x
       (bs', m'') = annBindings m' bs
-  in ( AST.Binding (a, m) x (annTerm m' t)
+  in ( AST.Binding (a, m) x (annTerm m t)
        : bs'
      , m''
      )
