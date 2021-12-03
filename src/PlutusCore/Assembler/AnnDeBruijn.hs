@@ -37,8 +37,8 @@ annTerm m =
     AST.Builtin a x -> AST.Builtin (a, m) x
     AST.Error a -> AST.Error (a, m)
     AST.Let a bs x ->
-      let (bs', m') = annBindings m (letReverse bs)
-      in AST.Let (a, m) (letReverse bs') (annTerm m' x)
+      let (bs', m') = annBindings m bs
+      in AST.Let (a, m) bs' (annTerm m' x)
     AST.IfThenElse a (AST.IfTerm i) (AST.ThenTerm t) (AST.ElseTerm e) ->
       AST.IfThenElse (a, m)
         (AST.IfTerm (annTerm m i))
@@ -60,7 +60,7 @@ annBindings m [] = ( [], m )
 annBindings m ( AST.Binding a x t : bs ) =
   let m' = addNameToMap m x
       (bs', m'') = annBindings m' bs
-  in ( AST.Binding (a, m) x (annTerm m' t)
+  in ( AST.Binding (a, m) x (annTerm m t)
        : bs'
      , m''
      )
