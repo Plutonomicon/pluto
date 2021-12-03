@@ -179,10 +179,38 @@ Map ::= "{" ( Data "=" Data )* "}"
 
 Run `nix-shell` (or `nix develop`, if you prefer to use the flake and you have Nix 2.4) to drop yourself in the development shell. From here, you may launch your text-editor and get access to IDE support via Haskell Language Server, as well use `cabal` to build and run the project.
 
+For rapid compilation feedback cycle, Ghcid can be run as follows,
+
+```
+ghcid -T PlutusCore.Assembler.EntryPoint.main --setup ":set args run examples/hello.pluto"
+```
+
+To run specific tests (eg: tests on example) in Ghcid,
+
+```
+ghcid -c 'cabal repl spec' -T Main.main --setup ':set args "-p" example'
+```
+
+### Examples
+
 To run the HelloWorld example,
 
 ```
-cabal run pluto -- run examples/hello.pluto
+cabal run pluto -- -v run examples/hello.pluto
+```
+
+(The `-v` option dumps intermediate ASTs)
+
+To evaluate a top-level binding with (optional) arguments. For example, this command evalutes the `greet` function from `hello.pluto` by applying it with the two given arguments.
+
+```
+cabal run pluto -- eval examples/hello.pluto greet '"Bonjour"' '"Charles"'
+```
+
+Top-level variables can also be accessed by ignoring the arguments:
+
+```
+cabal run pluto -- eval examples/hello.pluto defaultGreeting
 ```
 
 To only assemble the Pluto program into a Plutus bytecode:
@@ -191,8 +219,22 @@ To only assemble the Pluto program into a Plutus bytecode:
 cabal run pluto -- assemble examples/hello.pluto
 ```
 
-For rapid compilation feedback cycle, Ghcid can be run as follows,
+### Haskell FFI 
 
+Pluto programs can be accessed and evaluated (via Plutus Core) from Haskell code as follows:
+
+```haskell
+import qualified PlutusCore.Assembler.Types.AST as AST
+import qualified PlutusCore.Assembler.FFI as FFI
+
+hello :: AST.Program ()
+hello = $(FFI.load "examples/hello.pluto")
+
+$(FFI.bind 'hello
+  "defaultGreeting" [t|String|])
+
+$(FFI.bind 'hello
+  "greet" [t|String -> String -> String|])
 ```
-ghcid -T PlutusCore.Assembler.EntryPoint.main --setup ":set args run examples/hello.pluto"
-```
+
+The above exposes the two top-level bindings from the hello.pluto program, using the given type declaration. 

@@ -10,14 +10,17 @@ maintainer:    morgan.thomas@platonic.systems
 library
   exposed-modules:
     PlutusCore.Assembler.AnnDeBruijn
+    PlutusCore.Assembler.App
     PlutusCore.Assembler.Assemble
     PlutusCore.Assembler.ConstantToTokens
     PlutusCore.Assembler.Desugar
     PlutusCore.Assembler.EntryPoint
     PlutusCore.Assembler.Evaluate
+    PlutusCore.Assembler.FFI
     PlutusCore.Assembler.Parse
     PlutusCore.Assembler.Prelude
     PlutusCore.Assembler.Tokenize
+    PlutusCore.Assembler.Haskell
     PlutusCore.Assembler.Types.AST
     PlutusCore.Assembler.Types.Builtin
     PlutusCore.Assembler.Types.Constant
@@ -42,6 +45,7 @@ library
     optparse-applicative,
     parsec,
     shower,
+    template-haskell,
     playground-common,
     plutus-pab,
     plutus-core,
@@ -116,6 +120,7 @@ test-suite spec
 
   other-modules:
     PlutusCore.Assembler.Spec.AnnDeBruijnSpec
+    PlutusCore.Assembler.Spec.ExamplesSpec
     PlutusCore.Assembler.Spec.Gen
     PlutusCore.Assembler.Spec.Prelude
     PlutusCore.Assembler.Spec.ParseSpec
@@ -128,7 +133,9 @@ test-suite spec
     bytestring,
     containers,
     either,
+    exceptions,
     extra,
+    filepath,
     generic-lens,
     ghc-prim,
     hedgehog -any,
@@ -149,6 +156,8 @@ test-suite spec
     cardano-api -any,
     serialise -any,
     cardano-ledger-alonzo -any,
+    template-haskell,
+    shower,
 
     pluto
 

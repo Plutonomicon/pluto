@@ -43,8 +43,6 @@
                 # Non-Haskell shell tools go here
                 shell.buildInputs = with pkgs; [
                   nixpkgs-fmt
-                  cardano-node.outputs.packages.x86_64-linux."cardano-node:exe:cardano-node"
-                  cardano-node.outputs.packages.x86_64-linux."cardano-cli:exe:cardano-cli"
                 ];
               };
           })

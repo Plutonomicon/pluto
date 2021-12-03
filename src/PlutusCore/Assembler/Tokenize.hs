@@ -19,8 +19,8 @@ import           Data.Either.Combinators                 (mapLeft)
 import           Data.Text                               (cons, pack, replace)
 import           Data.Word                               (Word8)
 import           Text.Hex                                (encodeHex)
-import           Text.Parsec                             (SourcePos, choice,
-                                                          eof, many1)
+import           Text.Parsec                             (SourceName, SourcePos,
+                                                          choice, eof, many1)
 import           Text.Parsec.Char                        (anyChar, char, noneOf,
                                                           oneOf, string)
 import           Text.Parsec.Prim                        (getPosition,
@@ -38,8 +38,8 @@ import           PlutusCore.Assembler.Types.Token        (Token (..))
 -- TODO: convert to Parsec and output [(Token, SourcePos)]
 
 
-tokenize :: Text -> Either ErrorMessage [(Token, SourcePos)]
-tokenize = mapLeft (ErrorMessage . pack . show) . parse tokens "input"
+tokenize :: SourceName -> Text -> Either ErrorMessage [(Token, SourcePos)]
+tokenize name = mapLeft (ErrorMessage . pack . show) . parse tokens name
 
 
 tokens :: Parser [(Token, SourcePos)]

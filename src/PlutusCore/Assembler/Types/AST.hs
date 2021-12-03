@@ -1,7 +1,8 @@
-{-# LANGUAGE DeriveFoldable    #-}
-{-# LANGUAGE DeriveFunctor     #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveFoldable     #-}
+{-# LANGUAGE DeriveFunctor      #-}
+{-# LANGUAGE LambdaCase         #-}
+{-# LANGUAGE NoImplicitPrelude  #-}
 
 
 module PlutusCore.Assembler.Types.AST
@@ -17,22 +18,26 @@ module PlutusCore.Assembler.Types.AST
   , Binding (..)
   , Constant (..)
   , Builtin
-  , Data
+  , PLC.Data
   ) where
 
 
+import           Data.Data                           (Data)
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Types.Builtin  (Builtin)
 import           PlutusCore.Assembler.Types.Constant (Constant (..))
-import           PlutusCore.Data                     (Data)
+import qualified PlutusCore.Data                     as PLC
 
 
 newtype Program ann = Program { unProgram :: Term ann }
-  deriving (Eq, Show, Functor, Foldable)
+  deriving (Eq, Show, Data, Functor, Foldable)
 
 
 newtype Name = Name { getName :: Text }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Data, Show)
+
+instance IsString Name where
+  fromString = Name . fromString
 
 
 data Term ann =
@@ -47,7 +52,7 @@ data Term ann =
   | Let ann [Binding ann] (Term ann)
   | IfThenElse ann (IfTerm ann) (ThenTerm ann) (ElseTerm ann)
   | InfixApply ann (LeftTerm ann) (OpTerm ann) (RightTerm ann)
-  deriving (Eq, Show, Functor)
+  deriving (Eq, Show, Data, Functor)
 
 instance Foldable Term where
   foldMap f =
@@ -66,31 +71,31 @@ instance Foldable Term where
 
 
 newtype IfTerm ann = IfTerm (Term ann)
-  deriving (Eq, Show, Functor, Foldable)
+  deriving (Eq, Show, Data, Functor, Foldable)
 
 
 newtype ThenTerm ann = ThenTerm (Term ann)
-  deriving (Eq, Show, Functor, Foldable)
+  deriving (Eq, Show, Data, Functor, Foldable)
 
 
 newtype ElseTerm ann = ElseTerm (Term ann)
-  deriving (Eq, Show, Functor, Foldable)
+  deriving (Eq, Show, Data, Functor, Foldable)
 
 
 newtype LeftTerm ann = LeftTerm (Term ann)
-  deriving (Eq, Show, Functor, Foldable)
+  deriving (Eq, Show, Data, Functor, Foldable)
 
 
 newtype RightTerm ann = RightTerm (Term ann)
-  deriving (Eq, Show, Functor, Foldable)
+  deriving (Eq, Show, Data, Functor, Foldable)
 
 
 newtype OpTerm ann = OpTerm (Term ann)
-  deriving (Eq, Show, Functor, Foldable)
+  deriving (Eq, Show, Data, Functor, Foldable)
 
 
 data Binding ann = Binding ann Name (Term ann)
-  deriving (Eq, Show, Functor)
+  deriving (Eq, Show, Data, Functor)
 
 instance Foldable Binding where
   foldMap f (Binding a _ x) =

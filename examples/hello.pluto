@@ -1,7 +1,8 @@
 -- Hello world
 let 
-  sayHello = (\name -> 
-    let greeting = "Hello"
-    in (greeting +s name))
+  defaultGreeting = "Hello";
+  greet = (\greeting name -> 
+    (greeting +s ", ") +s name
+  )
 in 
-  sayHello "world"
+  greet defaultGreeting "world"

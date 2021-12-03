@@ -15,7 +15,6 @@ import           PlutusCore.Default                      (DefaultFun,
                                                           DefaultUni, Some,
                                                           ValueOf)
 import qualified PlutusCore.Default                      as PLC
-import           Text.Parsec.Pos                         (SourcePos)
 import qualified UntypedPlutusCore.Core.Type             as UPLC
 
 import           PlutusCore.Assembler.AnnDeBruijn        (addNameToMap)
@@ -32,13 +31,15 @@ type UnsweetProgram = UPLC.Program DeBruijn DefaultUni DefaultFun ()
 type UnsweetTerm = UPLC.Term DeBruijn DefaultUni DefaultFun ()
 
 
-desugar :: Program (SourcePos, Map Name DeBruijn)
+desugar :: Show ann
+        => Program (ann, Map Name DeBruijn)
         -> Either ErrorMessage UnsweetProgram
 desugar (AST.Program x) =
   UPLC.Program () (PLC.defaultVersion ()) <$> desugarTerm x
 
 
-desugarTerm :: Term (SourcePos, Map Name DeBruijn)
+desugarTerm :: Show ann
+            => Term (ann, Map Name DeBruijn)
             -> Either ErrorMessage UnsweetTerm
 desugarTerm =
   \case
@@ -78,7 +79,7 @@ desugarTerm =
 
 -- We pass in the bindings innermost first instead of the usual outermost
 -- first convention in order to simplify the recursion.
-desugarLet :: [Binding (SourcePos, Map Name DeBruijn)] -> Term (SourcePos, Map Name DeBruijn) -> Either ErrorMessage UnsweetTerm
+desugarLet :: Show ann => [Binding (ann, Map Name DeBruijn)] -> Term (ann, Map Name DeBruijn) -> Either ErrorMessage UnsweetTerm
 desugarLet [] y = desugarTerm y -- allow this case to make the recursion simpler
 desugarLet ( AST.Binding _ _ e : bs ) y =
   UPLC.Apply ()
