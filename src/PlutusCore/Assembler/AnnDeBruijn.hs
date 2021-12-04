@@ -6,6 +6,7 @@
 module PlutusCore.Assembler.AnnDeBruijn
   ( annDeBruijn
   , addNameToMap
+  , incDeBruijn
   ) where
 
 
@@ -66,9 +67,11 @@ annBindings m ( AST.Binding a x t : bs ) =
      )
 
 
+incDeBruijn :: DeBruijn -> DeBruijn
+incDeBruijn (DeBruijn (Index i)) = DeBruijn (Index (i + 1))
+
 addNameToMap :: Map Name DeBruijn -> Name -> Map Name DeBruijn
 addNameToMap m n =
-  Map.insert n (DeBruijn firstIndex) (inc <$> m)
+  Map.insert n (DeBruijn firstIndex) (incDeBruijn <$> m)
   where
-    inc (DeBruijn (Index i)) = DeBruijn (Index (i+1))
     firstIndex = Index 1
