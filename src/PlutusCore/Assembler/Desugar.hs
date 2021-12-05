@@ -17,7 +17,8 @@ import           PlutusCore.Default                      (DefaultFun,
 import qualified PlutusCore.Default                      as PLC
 import qualified UntypedPlutusCore.Core.Type             as UPLC
 
-import           PlutusCore.Assembler.AnnDeBruijn        (addNameToMap)
+import           PlutusCore.Assembler.AnnDeBruijn        (addNameToMap,
+                                                          incDeBruijn)
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Types.AST          (Binding, Builtin,
                                                           Constant, Name,
@@ -63,12 +64,19 @@ desugarTerm =
     AST.Error _ -> pure (UPLC.Error ())
     AST.Let _ bs x -> desugarLet bs x
     AST.IfThenElse _ (AST.IfTerm i) (AST.ThenTerm t) (AST.ElseTerm e) ->
-      UPLC.Apply ()
-        <$> ( UPLC.Apply ()
-                 <$> (UPLC.Apply () (UPLC.Builtin () PLC.IfThenElse)
-                       <$> desugarTerm i)
-                 <*> desugarTerm t )
-        <*> desugarTerm e
+      evalLazy
+      <$> (lazify2 (UPLC.Apply ())
+           <$> (lazify
+                <$> (UPLC.Apply ()
+                     <$> (UPLC.Apply ()
+                            (UPLC.Force () (UPLC.Builtin () PLC.IfThenElse))
+                          <$> desugarTerm i
+                         )
+                    )
+                 <*> lazy t
+               )
+           <*> lazy e
+          )
     AST.InfixApply _ (AST.LeftTerm l) (AST.OpTerm o) (AST.RightTerm r) ->
       UPLC.Apply ()
         <$> ( UPLC.Apply ()
@@ -76,6 +84,24 @@ desugarTerm =
                 <*> desugarTerm l )
         <*> desugarTerm r
 
+
+
+newtype Lazy = Lazy UnsweetTerm
+
+lazy :: Show a => Term (a, Map Name DeBruijn) -> Either ErrorMessage Lazy
+lazy t =
+  Lazy . UPLC.Delay () <$> desugarTerm (inc t)
+  where
+    inc = fmap (second (fmap incDeBruijn))
+
+evalLazy :: Lazy -> UnsweetTerm
+evalLazy (Lazy t) = UPLC.Force () t
+
+lazify :: (UnsweetTerm -> UnsweetTerm) -> Lazy -> Lazy
+lazify f (Lazy t) = Lazy $ f t
+
+lazify2 :: (UnsweetTerm -> UnsweetTerm -> UnsweetTerm) -> Lazy -> Lazy -> Lazy
+lazify2 f (Lazy t) (Lazy u) = Lazy $ f t u
 
 -- We pass in the bindings innermost first instead of the usual outermost
 -- first convention in order to simplify the recursion.
