@@ -65,7 +65,7 @@ desugarTerm =
     AST.Let _ bs x -> desugarLet bs x
     AST.IfThenElse _ (AST.IfTerm i) (AST.ThenTerm t) (AST.ElseTerm e) ->
       evalLazy
-      <$> (lazify2 $ UPLC.Apply ())
+      <$> ((lazify2 $ UPLC.Apply ())
            <$> (lazify
                 <$> (UPLC.Apply ()
                      <$> (UPLC.Apply ()
@@ -75,7 +75,8 @@ desugarTerm =
                     )
                  <*> lazy t
                )
-      <*> lazy e
+           <*> lazy e
+          )
     AST.InfixApply _ (AST.LeftTerm l) (AST.OpTerm o) (AST.RightTerm r) ->
       UPLC.Apply ()
         <$> ( UPLC.Apply ()
@@ -91,7 +92,7 @@ lazy :: Show a => Term (a, Map Name DeBruijn) -> Either ErrorMessage Lazy
 lazy t =
   Lazy . UPLC.Delay () <$> desugarTerm (inc t)
   where
-    inc = fmap (\(a, m) -> (a, incDeBruijn <$> m))
+    inc = fmap (second (fmap incDeBruijn))
 
 evalLazy :: Lazy -> UnsweetTerm
 evalLazy (Lazy t) = UPLC.Force () t
