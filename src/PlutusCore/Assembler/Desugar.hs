@@ -65,7 +65,7 @@ desugarTerm =
     AST.Let _ bs x -> desugarLet bs x
     AST.IfThenElse _ (AST.IfTerm i) (AST.ThenTerm t) (AST.ElseTerm e) ->
       evalLazy
-      <$> ((lazify2 $ UPLC.Apply ())
+      <$> (lazify2 $ UPLC.Apply ())
            <$> (lazify
                 <$> (UPLC.Apply ()
                      <$> (UPLC.Apply ()
@@ -75,8 +75,7 @@ desugarTerm =
                     )
                  <*> lazy t
                )
-           <*> lazy e
-          )
+      <*> lazy e
     AST.InfixApply _ (AST.LeftTerm l) (AST.OpTerm o) (AST.RightTerm r) ->
       UPLC.Apply ()
         <$> ( UPLC.Apply ()
