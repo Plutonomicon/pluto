@@ -191,6 +191,30 @@ To run specific tests (eg: tests on example) in Ghcid,
 ghcid -c 'cabal repl spec' -T Main.main --setup ':set args "-p" example'
 ```
 
+#### Checks to do before submitting a PR
+
+Does the style / lint check pass? With a clean checkout, run:
+
+```
+./ci/lint.sh
+```
+
+This will update the Haskell code with any changes from stylish-haskell. If you have a clean checkout and stylish-haskell produces no changes, then it will output any lint recommendations. Implement all lint recommendations, such that the above script produces no style changes no recommendations.
+
+Do the tests pass?
+
+```
+cabal test
+```
+
+Do the examples compile?
+
+```
+nix-build && ./ci/examples.sh
+```
+
+Currently, you must do all of these steps manually, as we do not have CI set up.
+
 ### Examples
 
 To run the HelloWorld example,
