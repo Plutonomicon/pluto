@@ -90,16 +90,12 @@ newtype Lazy = Lazy UnsweetTerm
 
 lazy :: Show a => Term (a, Map Name DeBruijn) -> Either ErrorMessage Lazy
 lazy t =
-  Lazy . UPLC.LamAbs () (DeBruijn (Index 0)) -- TODO: is this right?
-  <$> desugarTerm (inc t)
+  Lazy . UPLC.Delay () <$> desugarTerm (inc t)
   where
     inc = fmap (\(a, m) -> (a, incDeBruijn <$> m))
 
-unit :: UnsweetTerm
-unit = UPLC.Constant () (PLC.Some (PLC.ValueOf PLC.DefaultUniUnit ()))
-
 evalLazy :: Lazy -> UnsweetTerm
-evalLazy (Lazy t) = UPLC.Apply () t unit
+evalLazy (Lazy t) = UPLC.Force () t
 
 lazify :: (UnsweetTerm -> UnsweetTerm) -> Lazy -> Lazy
 lazify f (Lazy t) = Lazy $ f t
