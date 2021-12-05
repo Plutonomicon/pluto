@@ -44,6 +44,17 @@
                 shell.buildInputs = with pkgs; [
                   nixpkgs-fmt
                 ];
+                shell.shellHook =
+                  ''
+                  set -e
+
+                  manual-ci () {
+                    ./ci/lint.sh
+                    cabal test
+                    nix-build
+                    ./ci/examples.sh
+                  }
+                  '';
               };
           })
         ];

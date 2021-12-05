@@ -213,7 +213,7 @@ Do the examples compile?
 nix-build && ./ci/examples.sh
 ```
 
-Currently, you must do all of these steps manually, as we do not have CI set up.
+Currently, you must do all of these steps manually, or run the `manual-ci` function inside a nix shell, as we do not have CI set up.
 
 ### Examples
 
