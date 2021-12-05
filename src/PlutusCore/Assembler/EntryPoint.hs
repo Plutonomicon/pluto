@@ -12,10 +12,11 @@ module PlutusCore.Assembler.EntryPoint (main) where
 
 import           Data.Text                               (pack, unpack)
 import qualified Options.Applicative                     as O
+import           System.Exit                             (ExitCode (ExitFailure),
+                                                          exitWith)
 import           System.IO                               (FilePath, getContents,
                                                           print, writeFile)
 import           Text.Hex                                (encodeHex)
-import System.Exit (ExitCode (ExitFailure), exitWith)
 
 import qualified Data.Text                               as T
 import qualified Plutus.V1.Ledger.Scripts                as Scripts
