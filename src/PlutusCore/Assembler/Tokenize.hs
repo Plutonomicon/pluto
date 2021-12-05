@@ -121,7 +121,7 @@ token =
 
 var :: Parser Token
 var = do
-  begin <- oneOf ['a'..'z']
+  begin <- oneOf (['a'..'z'] <> "_")
   rest  <- many (oneOf (['a'..'z'] <> ['A'..'Z'] <> ['0'..'9'] <> "_"))
   return (Var (cons begin (pack rest)))
 
