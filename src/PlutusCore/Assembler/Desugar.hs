@@ -17,8 +17,7 @@ import           PlutusCore.Default                      (DefaultFun,
 import qualified PlutusCore.Default                      as PLC
 import qualified UntypedPlutusCore.Core.Type             as UPLC
 
-import           PlutusCore.Assembler.AnnDeBruijn        (addNameToMap,
-                                                          incDeBruijn)
+import           PlutusCore.Assembler.AnnDeBruijn        (addNameToMap)
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Types.AST          (Binding, Builtin,
                                                           Constant, Name,
@@ -89,10 +88,7 @@ desugarTerm =
 newtype Lazy = Lazy UnsweetTerm
 
 lazy :: Show a => Term (a, Map Name DeBruijn) -> Either ErrorMessage Lazy
-lazy t =
-  Lazy . UPLC.Delay () <$> desugarTerm (inc t)
-  where
-    inc = fmap (second (fmap incDeBruijn))
+lazy t = Lazy . UPLC.Delay () <$> desugarTerm t
 
 evalLazy :: Lazy -> UnsweetTerm
 evalLazy (Lazy t) = UPLC.Force () t
