@@ -15,6 +15,7 @@ import qualified Options.Applicative                     as O
 import           System.IO                               (FilePath, getContents,
                                                           print, writeFile)
 import           Text.Hex                                (encodeHex)
+import System.Exit (ExitCode (ExitFailure), exitWith)
 
 import qualified Data.Text                               as T
 import qualified Plutus.V1.Ledger.Scripts                as Scripts
@@ -147,7 +148,8 @@ main :: IO ()
 main = do
   (cmd, verbose) <- O.execParser commandInfo
   runExceptT (runCommand cmd verbose) >>= \case
-    Left err ->
+    Left err -> do
       logError err
+      exitWith (ExitFailure 1)
     Right () ->
       pure ()
