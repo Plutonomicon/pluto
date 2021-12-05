@@ -91,7 +91,7 @@ genToken =
 
 genName :: Gen Text
 genName = do
-  nm <- (<>) <$> Gen.text (Range.singleton 1) (Gen.element ['a'..'z'])
+  nm <- (<>) <$> Gen.text (Range.singleton 1) (Gen.element (['_']<>['a'..'z']))
               <*> Gen.text (Range.linear 0 100)
                     (Gen.element (['a'..'z']<>['A'..'Z']<>['0'..'9']<>['_']))
   return $ case nm of
