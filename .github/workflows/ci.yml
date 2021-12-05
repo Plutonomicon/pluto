@@ -10,6 +10,7 @@ on:
 jobs:
   build:
     name: nix-build
+    runs-on: ubuntu-latest
     steps:
 
     - name: Checkout repository to $GITHUB_WORKSPACE
