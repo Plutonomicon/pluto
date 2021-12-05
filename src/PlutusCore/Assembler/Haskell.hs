@@ -40,3 +40,22 @@ instance FromUPLC Text where
 
 instance FromUPLC String where
   fromUPLC = fmap T.unpack . fromUPLC
+
+instance FromUPLC Integer where
+  fromUPLC = \case
+    (UPLC.Constant () (PLC.Some (PLC.ValueOf PLC.DefaultUniInteger x))) -> pure x
+    _ -> Nothing
+
+instance FromUPLC (Integer, Integer) where
+  fromUPLC = \case
+    (UPLC.Constant ()
+      (PLC.Some
+        (PLC.ValueOf
+          (PLC.DefaultUniApply
+            (PLC.DefaultUniApply
+              PLC.DefaultUniProtoPair
+              PLC.DefaultUniInteger)
+            PLC.DefaultUniInteger)
+          x)))
+      -> pure x
+    _ -> Nothing

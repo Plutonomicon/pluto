@@ -24,11 +24,18 @@ $(FFI.bind 'hello
 $(FFI.bind 'hello
   "greet" [t|String -> String -> String|])
 
+type UplcRational = (Integer, Integer)
+
+rationals :: AST.Program ()
+rationals = $(FFI.load "examples/field-of-rationals.pluto")
+$(FFI.bind 'rationals "plus" [t|UplcRational -> UplcRational -> UplcRational|])
+
 tests :: TestTree
 tests =
   testGroup
     "examples"
     [ helloTest
+    , fieldOfRationalsTest
     ]
 
 helloTest :: TestTree
@@ -47,3 +54,13 @@ helloTest =
   where
     someText = Gen.string (Range.linear 3 9) Gen.alpha
 
+fieldOfRationalsTest :: TestTree
+fieldOfRationalsTest =
+  testGroup "field-of-rationals.pluto"
+  [ testProperty "addition is commutative" . property $ do
+      return ()
+  ]
+{-
+  where
+    someRatio = (,) <$> 
+-}
