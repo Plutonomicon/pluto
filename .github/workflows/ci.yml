@@ -10,7 +10,6 @@ on:
 jobs:
   build:
     name: nix-build
-    runs-on: self-hosted
     steps:
 
     - name: Checkout repository to $GITHUB_WORKSPACE
