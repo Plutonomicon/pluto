@@ -11,12 +11,12 @@ let
   over = tuple;
   num = fst;
   denom = snd;
-  signumInteger = (\a -> if a <i 0 then -1 else if 0 <i a then 1 else 0);
-  negInteger = (\i -> -1 *i i);
-  absInteger = (\x -> if x <i 0 then negInteger x else x);
-  normSigns = (\x -> let a = num x; b = denom x in (a *i signumInteger b) `over` (absInteger b));
-  minInteger = (\a b -> if a <i b then a else b);
-  maxInteger = (\a b -> if a <i b then b else a);
+  i_signum = (\a -> if a <i 0 then -1 else if 0 <i a then 1 else 0);
+  i_neg = (\i -> -1 *i i);
+  i_abs = (\x -> if x <i 0 then i_neg x else x);
+  normSigns = (\x -> let a = num x; b = denom x in (a *i i_signum b) `over` (i_abs b));
+  i_min = (\a b -> if a <i b then a else b);
+  i_max = (\a b -> if a <i b then b else a);
   gcd = (\f -> f f) (\gcd a b -> let c = minInteger a b; d = maxInteger a b
                           in (if d ==i 0 then c else gcd gcd c (d %i c)));
   norm = (\x0 -> let x1 = normSigns x0; a = num x1; b = denom x1; g = gcd a b
@@ -40,6 +40,6 @@ let
   zero = 0 `over` 1;
   one = 1 `over` 1;
   negate = (\x -> (num x *i -1) `over` denom x);
-  reciprocal = (\x -> let a = num x; b = denom x in (b *i signumInteger a) `over` absInteger a)
+  reciprocal = (\x -> let a = num x; b = denom x in (b *i i_signum a) `over` i_abs a)
 in
   plus `tuple` ( times `tuple` ( negate `tuple` ( reciprocal `tuple` ( one `tuple` ( zero `tuple` NullList ) ) ) ) )
