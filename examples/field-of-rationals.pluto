@@ -1,9 +1,16 @@
 -- This is a toy example: the field of rational numbers (most likely broken).
 let
   fix = (\f -> (\x -> f (x x)) (\x -> f (x x)));
-  over = MkCons;
-  num = FstPair;
-  denom = SndPair;
+  apply = (\a b -> b a);
+
+  -- scott encoding
+  tuple = (\a b -> (\c -> c a b));
+  fst = apply (\a b -> a);
+  snd = apply (\a b -> b);
+
+  over = tuple;
+  num = fst;
+  denom = snd;
   signumInteger = (\a -> if a <i 0 then -1 else if 0 <i a then 1 else 0);
   signum = (\x -> signumInteger (num x));
   abs = (\x -> let a = num x; b = denom x in (if a <i 0 then (a *i -1) `over` b else x));
@@ -30,9 +37,9 @@ let
               in norm ((a *i c) `over` (b *i d))
             )
           );
-  zero = 0 `MkCons` 1;
-  one = 1 `MkCons` 1;
+  zero = 0 `over` 1;
+  one = 1 `over` 1;
   negate = (\x -> (num x *i -1) `over` denom x);
   reciprocal = (\x -> let a = num x; b = denom x in (b *i signum a) `over` abs a)
 in
-  plus `MkCons` ( times `MkCons` ( negate `MkCons` ( reciprocal `MkCons` ( one `MkCons` ( zero `MkCons` NullList ) ) ) ) )
+  plus `tuple` ( times `tuple` ( negate `tuple` ( reciprocal `tuple` ( one `tuple` ( zero `tuple` NullList ) ) ) ) )
