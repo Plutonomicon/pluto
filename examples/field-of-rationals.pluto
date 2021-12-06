@@ -10,8 +10,8 @@ let
   normSigns = (\x -> let a = num x; b = denom x in (a *i signumInteger b) `over` (abs b));
   minInteger = (\a b -> if a <i b then a else b);
   maxInteger = (\a b -> if a <i b then b else a);
-  gcd = (fix (\gcd a b -> let c = minInteger a b; d = maxInteger a b
-                          in (if d ==i 0 then c else gcd c (d %i c))));
+  gcd = (\f -> f f) (\gcd a b -> let c = minInteger a b; d = maxInteger a b
+                          in (if d ==i 0 then c else gcd gcd c (d %i c)));
   norm = (\x0 -> let x1 = normSigns x0; a = num x1; b = denom x1; g = gcd a b
                  in (a /i g) `over` (b /i g));
   plus = ( \x y ->
