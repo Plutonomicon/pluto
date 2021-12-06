@@ -1,6 +1,6 @@
 -- This is a toy example: the field of rational numbers (most likely broken).
 let
-  fix = (\f -> (\x -> f (x x)) (\x -> f (x x)));
+  fix = (\f -> (\x -> f (\v -> x x v)) (\x -> f (\v -> x x v)));
   apply = (\a b -> b a);
 
   -- scott encoding
@@ -13,14 +13,14 @@ let
   i_abs = (\x -> if x <i 0 then i_neg x else x);
   i_min = (\a b -> if a <i b then a else b);
   i_max = (\a b -> if a <i b then b else a);
-  gcd = (\f -> f f)
+  gcd = fix
           (\gcd a b ->
              let
                _a = i_abs a;
                _b = i_abs b;
                c = i_min _a _b;
                d = i_max _a _b
-             in (if c ==i 0 then d else gcd gcd c (d %i c))
+             in (if c ==i 0 then d else gcd c (d %i c))
           );
 
   over = tuple;
