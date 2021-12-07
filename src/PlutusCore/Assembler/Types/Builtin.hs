@@ -55,6 +55,7 @@ data Builtin =
   | UnConstrData
   | UnMapData
   | UnBData
+  | UnIData
   | EqualsData
   | MkPairData
   | MkNilData
