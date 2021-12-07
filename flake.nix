@@ -43,13 +43,24 @@
                 # Non-Haskell shell tools go here
                 shell.buildInputs = with pkgs; [
                   nixpkgs-fmt
-                  cardano-node.outputs.packages.x86_64-linux."cardano-node:exe:cardano-node"
-                  cardano-node.outputs.packages.x86_64-linux."cardano-cli:exe:cardano-cli"
                 ];
+                shell.shellHook =
+                  ''
+                  manual-ci() (
+                    set -e
+
+                    ./ci/lint.sh
+                    cabal test
+                    nix-build
+                    ./ci/examples.sh
+                  )
+                  '';
               };
           })
         ];
         pkgs = import nixpkgs { inherit system overlays; inherit (haskellNix) config; };
         flake = pkgs.pluto.flake { };
-      in flake);
+      in flake // {
+        defaultPackage = flake.packages."pluto:exe:pluto";
+      });
 }

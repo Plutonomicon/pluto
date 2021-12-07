@@ -8,7 +8,8 @@ module PlutusCore.Assembler.Parse ( parse ) where
 import           Data.Either.Extra                       (mapLeft)
 import           Data.Text                               (pack, unpack)
 import qualified PlutusCore.Data                         as Data
-import           Text.Parsec                             (Parsec, SourcePos,
+import           Text.Parsec                             (Parsec, SourceName,
+                                                          SourcePos,
                                                           getPosition, many,
                                                           many1, option, try)
 import           Text.Parsec.Prim                        (token)
@@ -28,9 +29,8 @@ import qualified PlutusCore.Assembler.Types.Token        as Tok
 type Parser = Parsec [(Token, SourcePos)] ()
 
 
-parse :: [(Token, SourcePos)] -> Either ErrorMessage (Program SourcePos)
-parse = mapLeft (ErrorMessage . pack . show) . Prim.parse program "input"
-
+parse :: SourceName -> [(Token, SourcePos)] -> Either ErrorMessage (Program SourcePos)
+parse name = mapLeft (ErrorMessage . pack . show) . Prim.parse program name
 
 consume :: ((Token, SourcePos) -> Maybe a) -> Parser a
 consume = token (unpack . printToken . fst) snd

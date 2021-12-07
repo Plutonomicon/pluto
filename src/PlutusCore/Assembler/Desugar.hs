@@ -15,7 +15,6 @@ import           PlutusCore.Default                      (DefaultFun,
                                                           DefaultUni, Some,
                                                           ValueOf)
 import qualified PlutusCore.Default                      as PLC
-import           Text.Parsec.Pos                         (SourcePos)
 import qualified UntypedPlutusCore.Core.Type             as UPLC
 
 import           PlutusCore.Assembler.AnnDeBruijn        (addNameToMap)
@@ -32,20 +31,22 @@ type UnsweetProgram = UPLC.Program DeBruijn DefaultUni DefaultFun ()
 type UnsweetTerm = UPLC.Term DeBruijn DefaultUni DefaultFun ()
 
 
-desugar :: Program (SourcePos, Map Name DeBruijn)
+desugar :: Show ann
+        => Program (ann, Map Name DeBruijn)
         -> Either ErrorMessage UnsweetProgram
 desugar (AST.Program x) =
   UPLC.Program () (PLC.defaultVersion ()) <$> desugarTerm x
 
 
-desugarTerm :: Term (SourcePos, Map Name DeBruijn)
+desugarTerm :: Show ann
+            => Term (ann, Map Name DeBruijn)
             -> Either ErrorMessage UnsweetTerm
 desugarTerm =
   \case
     AST.Var (p, m) x ->
       case Map.lookup x m of
         Just i -> pure (UPLC.Var () i)
-        Nothing -> Left (ErrorMessage $ "undefined variable name " <> AST.getName x <> " at source position " <> Text.pack (show p))
+        Nothing -> Left (ErrorMessage $ "undefined variable name '" <> AST.getName x <> "' at source position " <> Text.pack (show p))
     AST.Lambda (p, _) [] _ -> Left (ErrorMessage $ "lambda with no names at source position " <> Text.pack (show p))
     AST.Lambda _ [_] y ->
       UPLC.LamAbs () (DeBruijn (Index 0)) -- TODO: is this right?
@@ -60,14 +61,21 @@ desugarTerm =
     AST.Constant _ x -> pure (UPLC.Constant () (desugarConstant x))
     AST.Builtin _ f -> pure (UPLC.Builtin () (desugarBuiltin f))
     AST.Error _ -> pure (UPLC.Error ())
-    AST.Let _ bs x -> desugarLet (reverse bs) x
+    AST.Let _ bs x -> desugarLet bs x
     AST.IfThenElse _ (AST.IfTerm i) (AST.ThenTerm t) (AST.ElseTerm e) ->
-      UPLC.Apply ()
-        <$> ( UPLC.Apply ()
-                 <$> (UPLC.Apply () (UPLC.Builtin () PLC.IfThenElse)
-                       <$> desugarTerm i)
-                 <*> desugarTerm t )
-        <*> desugarTerm e
+      evalLazy
+      <$> (lazify2 (UPLC.Apply ())
+           <$> (lazify
+                <$> (UPLC.Apply ()
+                     <$> (UPLC.Apply ()
+                            (UPLC.Force () (UPLC.Builtin () PLC.IfThenElse))
+                          <$> desugarTerm i
+                         )
+                    )
+                 <*> lazy t
+               )
+           <*> lazy e
+          )
     AST.InfixApply _ (AST.LeftTerm l) (AST.OpTerm o) (AST.RightTerm r) ->
       UPLC.Apply ()
         <$> ( UPLC.Apply ()
@@ -76,9 +84,24 @@ desugarTerm =
         <*> desugarTerm r
 
 
+
+newtype Lazy = Lazy UnsweetTerm
+
+lazy :: Show a => Term (a, Map Name DeBruijn) -> Either ErrorMessage Lazy
+lazy t = Lazy . UPLC.Delay () <$> desugarTerm t
+
+evalLazy :: Lazy -> UnsweetTerm
+evalLazy (Lazy t) = UPLC.Force () t
+
+lazify :: (UnsweetTerm -> UnsweetTerm) -> Lazy -> Lazy
+lazify f (Lazy t) = Lazy $ f t
+
+lazify2 :: (UnsweetTerm -> UnsweetTerm -> UnsweetTerm) -> Lazy -> Lazy -> Lazy
+lazify2 f (Lazy t) (Lazy u) = Lazy $ f t u
+
 -- We pass in the bindings innermost first instead of the usual outermost
 -- first convention in order to simplify the recursion.
-desugarLet :: [Binding (SourcePos, Map Name DeBruijn)] -> Term (SourcePos, Map Name DeBruijn) -> Either ErrorMessage UnsweetTerm
+desugarLet :: Show ann => [Binding (ann, Map Name DeBruijn)] -> Term (ann, Map Name DeBruijn) -> Either ErrorMessage UnsweetTerm
 desugarLet [] y = desugarTerm y -- allow this case to make the recursion simpler
 desugarLet ( AST.Binding _ _ e : bs ) y =
   UPLC.Apply ()

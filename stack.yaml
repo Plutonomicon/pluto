@@ -54,6 +54,9 @@ extra-deps:
 - th-extras-0.0.0.4@sha256:2f408c0f427530f36beb19c733a7a57f67b727713f9bb942b64f3b2e0e2932bf,1457
 
 
+- git: https://github.com/monadfix/shower.git
+  commit: 3e02d92e0500e41b4e9932294f4960463a7222d4
+  # nix-sha256: sha256-JGOO02bWpr2cUQdJItu56AeGKfQI4TmrmIkXDqkxe6Q=
 - git: https://github.com/typeclasses/hex-text.git
   commit: 5c737d002ed034a8dc8b39e9ced01b12ebc97ed8
   subdirs:
@@ -62,10 +65,10 @@ extra-deps:
 - git: https://github.com/Quid2/flat.git
   commit: ee59880f47ab835dbd73bea0847dab7869fc20d8
 - git: https://github.com/input-output-hk/purescript-bridge.git
-  commit: 6a92d7853ea514be8b70bab5e72077bf5a510596
+  commit: 35d863ba86c97d044025ce64b7cea0e1b0418bf0
 - git: https://github.com/input-output-hk/servant-purescript.git
-  commit: a0c7c7e37c95564061247461aef4be505a853538
-  # nix-sha256: sha256-zjrHrodkcbQmHPkyVivXfXAKCFT6N6smCo4bJwlQ9pw=
+  commit: 746a9a27654621ca6a24a31d083aba54dc58555a
+  # nix-sha256: sha256-HOrBOlXw06hGDzW+5/upbJbdya+DYTZZpK362HVrIeQ=
 - git: https://github.com/input-output-hk/cardano-crypto.git
   commit: 07397f0e50da97eaa0575d93bee7ac4b2b2576ec
   # nix-sha256: sha256-oxIOVlgm07FAEmgGRF1C2me9TXqVxQulEOcJ22zpTRs=
@@ -171,7 +174,7 @@ extra-deps:
 - git: https://github.com/input-output-hk/goblins
   commit: cde90a2b27f79187ca8310b6549331e59595e7ba
 - git: https://github.com/input-output-hk/plutus
-  commit: 3f089ccf0ca746b399c99afe51e063b0640af547
+  commit: ae5f8b3ff64766717694bdca3d0385e717a963b8
   subdirs:
     - plutus-core
     - plutus-ledger-api
@@ -181,7 +184,7 @@ extra-deps:
     - prettyprinter-configurable
     - stubs/plutus-ghc-stub
 - git: https://github.com/input-output-hk/plutus-apps
-  commit: 406f5f951358c1d44d31b1c5ba5f35b393eed195
+  commit: ff17e42be4ede4ff9711634f1b924ca1de90851a
   subdirs:
   - freer-extras
   - playground-common
@@ -194,7 +197,7 @@ extra-deps:
   - plutus-use-cases
   - quickcheck-dynamic
   - web-ghc
-  # nix-sha256: sha256-7QG4VOjBBX0A1YmBkdTxepl8ZXJ0XZpPxj0MHypE9W0=
+  # nix-sha256: sha256-u8gU/uQYNDA0KM6+hNI3Oo0qOfjBx04b30I/Zsbv2Pc=
 
 
 allow-newer: true

@@ -8,11 +8,12 @@ module PlutusCore.Assembler.Spec.Shrink ( tests , testScriptTact, unitTest) wher
 
 import qualified PlutusCore                               as PLC
 import           PlutusCore.Assembler.AnnDeBruijn
+import           PlutusCore.Assembler.Assemble            (parseProgram)
 import           PlutusCore.Assembler.Desugar
-import           PlutusCore.Assembler.Parse
+--import           PlutusCore.Assembler.Parse
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Shrink              (SafeTactic, Tactic,
-                                                           Term,
+                                                           Program,Term,
                                                            defaultShrinkParams,
                                                            safeTactics, size,
                                                            tactics,shrinkProgram)
@@ -28,7 +29,7 @@ import qualified UntypedPlutusCore.Core.Type              as UPLC
 import           UntypedPlutusCore.DeBruijn               (Index (..))
 import           UntypedPlutusCore.Evaluation.Machine.Cek
 
-import           Control.Monad.Except
+--import           Control.Monad.Except
 import           Control.Monad.State                      (State, evalState,
                                                            get, gets, modify,
                                                            put)
@@ -36,9 +37,9 @@ import           Data.Text                                (pack)
 import           PlutusCore.Evaluation.Machine.ExMemory   (ExCPU (..),
                                                            ExMemory (..))
 import           Prelude                                  (FilePath, Int, curry,
-                                                           error, fromIntegral,
-                                                           length, not, print,
-                                                           putStrLn, readFile,
+                                                           fromIntegral,
+                                                           not, print,
+                                                           putStrLn, 
                                                            tail, (!!), (++))
 
 type Result = Either (CekEvaluationException DefaultUni DefaultFun) (UPLC.Term Name DefaultUni DefaultFun ())
@@ -146,13 +147,17 @@ scopeName = do
 runWithCek :: UPLC.Term Name DefaultUni DefaultFun () -> (Result,RestrictingSt)
 runWithCek = runCekNoEmit PLC.defaultCekParameters ( restricting . ExRestrictingBudget $ ExBudget
     { exBudgetCPU    = 1_000_000_000 :: ExCPU
-    , exBudgetMemory = 1_000_000 :: ExMemory
+    , exBudgetMemory = 1_000_000     :: ExMemory
       } )
+
+fromFile :: FilePath -> IO (Either ErrorMessage Program)
+fromFile fp = do
+  txt <- pack <$> readFile fp
+  return $ ((desugar . annDeBruijn) <=< parseProgram fp ) txt
 
 testScriptTact :: FilePath -> Tactic -> IO ()
 testScriptTact scriptFilePath tact = do
-  txt <- pack <$> readFile scriptFilePath
-  let uplc' = desugar . annDeBruijn =<< parse =<< tokenize txt
+  uplc' <- fromFile scriptFilePath
   case uplc' of
     Left e -> print e
     Right (UPLC.Program () _ uplc) -> do
@@ -177,8 +182,7 @@ printUplcRes (uplc,(res,_)) = do
 
 unitTest :: FilePath -> IO ()
 unitTest scriptFilePath = do
-  txt <- pack <$> readFile scriptFilePath
-  let uplc' = desugar . annDeBruijn =<< parse =<< tokenize txt
+  uplc' <- fromFile scriptFilePath
   case uplc' of
     Left e -> print e
     Right prog -> do

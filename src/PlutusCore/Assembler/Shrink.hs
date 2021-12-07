@@ -4,6 +4,7 @@
 
 module PlutusCore.Assembler.Shrink
   (shrinkProgram -- all exports besides shrinkProgram are exported for testing
+  ,Program
   ,Tactic
   ,SafeTactic
   ,Term
@@ -23,7 +24,7 @@ import           Prelude                      (Int, drop, fromIntegral, head,
                                                id, map, min, take, (++), (>))
 import qualified UntypedPlutusCore.Core.Type  as UPLC
 
-import           PlutusCore.Assembler.Prelude
+import           PlutusCore.Assembler.Prelude hiding (length)
 import           PlutusCore.DeBruijn          (DeBruijn (..), Index (..))
 import           PlutusCore.Default           (DefaultFun (..), DefaultUni)
 
@@ -176,6 +177,7 @@ incAbove level (DeBruijn n) = if n > level then DeBruijn (n+1) else DeBruijn n
 
 decDeBruijns :: Term -> Term
 decDeBruijns = decDeBruijns' 0
+  ,Program
 
 decDeBruijns' :: Index -> Term -> Term
 decDeBruijns' level = completeRec $ \case

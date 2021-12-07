@@ -1,0 +1,8 @@
+-- Hello world
+let 
+  defaultGreeting = "Hello";
+  greet = (\greeting name -> 
+    (greeting +s ", ") +s name
+  )
+in 
+  greet defaultGreeting "world"

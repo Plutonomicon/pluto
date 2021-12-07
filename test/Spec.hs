@@ -1,7 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 
-module Main ( main ) where
+module Main ( main, limit, tests ) where
 
 
 import           Test.Tasty                                (defaultMain,
@@ -10,6 +10,7 @@ import           Test.Tasty.Hedgehog                       (HedgehogTestLimit (.
 
 import           PlutusCore.Assembler.Prelude
 import qualified PlutusCore.Assembler.Spec.AnnDeBruijnSpec as AnnDeBruijn
+import qualified PlutusCore.Assembler.Spec.ExamplesSpec    as Examples
 import qualified PlutusCore.Assembler.Spec.ParseSpec       as Parse
 import           PlutusCore.Assembler.Spec.Prelude
 import qualified PlutusCore.Assembler.Spec.Shrink          as Shrink
@@ -27,11 +28,15 @@ limit = HedgehogTestLimit (Just 1000)
 
 tests :: TestTree
 tests =
-  localOption limit
-  $
-  testGroup "pluto"
-  [ AnnDeBruijn.tests
-  , Parse.tests
-  , Tokenize.tests
-  , Shrink.tests
-  ]
+  localOption limit $
+    testGroup "main"
+      [ testGroup "pluto"
+          [ AnnDeBruijn.tests
+          , Parse.tests
+          , Tokenize.tests
+          , Shrink.tests
+          ]
+      , testGroup "example"
+          [ Examples.tests
+          ]
+      ]

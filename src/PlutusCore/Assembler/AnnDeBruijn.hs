@@ -6,6 +6,7 @@
 module PlutusCore.Assembler.AnnDeBruijn
   ( annDeBruijn
   , addNameToMap
+  , incDeBruijn
   ) where
 
 
@@ -60,15 +61,17 @@ annBindings m [] = ( [], m )
 annBindings m ( AST.Binding a x t : bs ) =
   let m' = addNameToMap m x
       (bs', m'') = annBindings m' bs
-  in ( AST.Binding (a, m) x (annTerm m' t)
+  in ( AST.Binding (a, m) x (annTerm m t)
        : bs'
      , m''
      )
 
 
+incDeBruijn :: DeBruijn -> DeBruijn
+incDeBruijn (DeBruijn (Index i)) = DeBruijn (Index (i + 1))
+
 addNameToMap :: Map Name DeBruijn -> Name -> Map Name DeBruijn
 addNameToMap m n =
-  -- TODO: is the first index zero or one?
-  Map.insert n (DeBruijn (Index 0)) (inc <$> m)
+  Map.insert n (DeBruijn firstIndex) (incDeBruijn <$> m)
   where
-    inc (DeBruijn (Index i)) = DeBruijn (Index (i+1))
+    firstIndex = Index 1
