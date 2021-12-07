@@ -2,7 +2,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 
-module PlutusCore.Assembler.Parse ( parse ) where
+module PlutusCore.Assembler.Parse ( parse, parseData ) where
 
 
 import           Data.Either.Extra                       (mapLeft)
@@ -30,7 +30,13 @@ type Parser = Parsec [(Token, SourcePos)] ()
 
 
 parse :: SourceName -> [(Token, SourcePos)] -> Either ErrorMessage (Program SourcePos)
-parse name = mapLeft (ErrorMessage . pack . show) . Prim.parse program name
+parse = parse' program
+
+parseData :: SourceName -> [(Token, SourcePos)] -> Either ErrorMessage Data
+parseData = parse' dataLiteral
+
+parse' :: Parser a -> SourceName -> [(Token, SourcePos)] -> Either ErrorMessage a
+parse' p name = mapLeft (ErrorMessage . pack . show) . Prim.parse p name
 
 consume :: ((Token, SourcePos) -> Maybe a) -> Parser a
 consume = token (unpack . printToken . fst) snd

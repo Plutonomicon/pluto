@@ -1,0 +1,2 @@
+-- Echos the first command line argument
+(\x -> x)

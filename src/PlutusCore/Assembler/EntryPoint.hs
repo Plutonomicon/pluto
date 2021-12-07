@@ -7,7 +7,7 @@
 {-# LANGUAGE ViewPatterns      #-}
 
 
-module PlutusCore.Assembler.EntryPoint (main) where
+module PlutusCore.Assembler.EntryPoint (main)  where
 
 
 import           Data.Text                               (pack, unpack)
@@ -18,6 +18,7 @@ import           System.IO                               (FilePath, getContents,
                                                           print, writeFile)
 import           Text.Hex                                (encodeHex)
 
+import qualified Data.Bifunctor                          as Bifunctor
 import qualified Data.Text                               as T
 import qualified Plutus.V1.Ledger.Scripts                as Scripts
 import           PlutusCore.Assembler.App
@@ -26,6 +27,7 @@ import qualified PlutusCore.Assembler.Evaluate           as Evaluate
 import           PlutusCore.Assembler.Prelude
 import qualified PlutusCore.Assembler.Types.AST          as AST
 import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage (..))
+import qualified PlutusCore.Data                         as PLC
 import qualified PlutusCore.Pretty                       as Pretty
 
 
@@ -41,6 +43,7 @@ data Command
     (Maybe OutputFilePath)
   | CommandRun
     (Maybe InputFilePath)
+    [PLC.Data]
   | CommandEval
     (Maybe InputFilePath)
     AST.Name
@@ -74,6 +77,7 @@ command = do
     runP =
       CommandRun
       <$> inputFilePath
+      <*> O.many (O.argument dataReader (O.metavar "PLC.Data encoded"))
     runBindingP =
       CommandEval
       <$> inputFilePath
@@ -83,6 +87,10 @@ command = do
     termReader =
       O.eitherReader $ \(T.pack -> s) ->
         bimap (T.unpack . getErrorMessage) (void . AST.unProgram) $ Assemble.parseProgram "<cli-arg>" s
+    dataReader :: O.ReadM PLC.Data
+    dataReader =
+      O.eitherReader $ \(Assemble.parsePlutusData "<cli-arg>" . T.pack -> x) ->
+        Bifunctor.first show x
 
 
 commandInfo :: O.ParserInfo (Command, Verbose)
@@ -99,7 +107,7 @@ runCommand cmd (Verbose verbose) = do
     CommandAssemble mInPath mOutPath -> do
       bin <- assembleInput mInPath
       writeObjectCode mOutPath bin
-    CommandRun mInPath -> do
+    CommandRun mInPath args -> do
       ast <- parseInput mInPath
       when verbose $ do
         logHeader "AST"
@@ -110,7 +118,8 @@ runCommand cmd (Verbose verbose) = do
         logShower $ Scripts.unScript prog
         logHeader "UPLC (pretty)"
         logInfo $ Pretty.display $ Scripts.unScript prog
-      (exBudget, traces, res) <- liftError ErrorEvaluating $ Evaluate.eval prog
+      (exBudget, traces, res) <- liftError ErrorEvaluating $
+        Evaluate.evalWithArgs args prog
       when verbose $ do
         logHeader "ExBudget"
         liftIO $ print exBudget
