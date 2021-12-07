@@ -18,10 +18,8 @@ import           System.IO                               (FilePath, getContents,
                                                           print, writeFile)
 import           Text.Hex                                (encodeHex)
 
-import qualified Codec.Serialise                         as Serialise
-import qualified Data.ByteString.Lazy                    as BS
+import qualified Data.Bifunctor                          as Bifunctor
 import qualified Data.Text                               as T
-import           Data.Text.Encoding                      (encodeUtf8)
 import qualified Plutus.V1.Ledger.Scripts                as Scripts
 import           PlutusCore.Assembler.App
 import qualified PlutusCore.Assembler.Assemble           as Assemble
@@ -91,8 +89,8 @@ command = do
         bimap (T.unpack . getErrorMessage) (void . AST.unProgram) $ Assemble.parseProgram "<cli-arg>" s
     dataReader :: O.ReadM PLC.Data
     dataReader =
-      O.eitherReader $ \(Serialise.deserialise . BS.fromStrict . encodeUtf8 . T.pack -> x) ->
-        pure x
+      O.eitherReader $ \(Assemble.parsePlutusData "<cli-arg>" . T.pack -> x) ->
+        Bifunctor.first show x
 
 
 commandInfo :: O.ParserInfo (Command, Verbose)

@@ -1,11 +1,11 @@
 -- Hello world
 let 
-  defaultGreeting = 0x48656c6c6f; -- "Hello"
-  sep = 0x2c20; -- ", "
+  defaultGreeting = "Hello";
   greet = (\greeting name -> 
-    (greeting +b sep) +b name
+    (greeting +s ", ") +s name
   )
 in 
+  -- The argument is a Plutus Data value
   (\nameData -> 
-    greet defaultGreeting (UnBData nameData)
+    greet defaultGreeting (DecodeUtf8 (UnBData nameData))
   )
