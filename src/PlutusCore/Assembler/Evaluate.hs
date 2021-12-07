@@ -8,11 +8,11 @@
 
 module PlutusCore.Assembler.Evaluate
   ( eval
+  , evalWithArgs
   , evalToplevelBinding
   , evalToplevelBindingToHaskellValueMust
   ) where
 
-import           Control.Monad.Except
 import           Plutus.V1.Ledger.Scripts                 (Script)
 import qualified Plutus.V1.Ledger.Scripts                 as Scripts
 import           PlutusCore.Assembler.App
@@ -20,6 +20,7 @@ import qualified PlutusCore.Assembler.Assemble            as Assemble
 import qualified PlutusCore.Assembler.Haskell             as H
 import           PlutusCore.Assembler.Prelude
 import qualified PlutusCore.Assembler.Types.AST           as AST
+import qualified PlutusCore.Data                          as PLC
 import           PlutusCore.Evaluation.Machine.ExBudget   (ExBudget)
 import           PlutusTx.Evaluation                      (evaluateCekTrace)
 import           UntypedPlutusCore                        (DefaultFun,
@@ -29,6 +30,11 @@ import qualified UntypedPlutusCore.Evaluation.Machine.Cek as UPLC
 
 eval :: Script -> Either Scripts.ScriptError (ExBudget, [Text], Term Name DefaultUni DefaultFun ())
 eval = evaluateScript @(Either Scripts.ScriptError)
+
+evalWithArgs :: [PLC.Data] -> Script -> Either Scripts.ScriptError (ExBudget, [Text], Term Name DefaultUni DefaultFun ())
+evalWithArgs args =
+  evaluateScript @(Either Scripts.ScriptError)
+    . flip Scripts.applyArguments args
 
 -- | Like `evalTopLevelBinding`, but expects the result to be a Haskell value.
 evalToplevelBindingToHaskellValueMust :: (H.FromUPLC a, HasCallStack) => AST.Name -> [AST.Term ()] -> AST.Program () -> a
@@ -88,7 +94,8 @@ applyToplevelBinding name args = \case
 
 -- | Evaluate a script, returning the trace log and term result.
 --
--- This is same as `Plutus.V1.Ledger.Scripts.evaluateScript`, but returns the script result as well.
+-- This is same as `Plutus.V1.Ledger.Scripts.evaluateScript`, but returns the
+-- script result as well.
 evaluateScript
  :: forall m uni fun . (MonadError Scripts.ScriptError m, uni ~ DefaultUni, fun ~ DefaultFun)
  => Script

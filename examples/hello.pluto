@@ -1,8 +1,11 @@
 -- Hello world
 let 
-  defaultGreeting = "Hello";
+  defaultGreeting = 0x48656c6c6f; -- "Hello"
+  sep = 0x2c20; -- ", "
   greet = (\greeting name -> 
-    (greeting +s ", ") +s name
+    (greeting +b sep) +b name
   )
 in 
-  greet defaultGreeting "world"
+  (\nameData -> 
+    greet defaultGreeting (UnBData nameData)
+  )
