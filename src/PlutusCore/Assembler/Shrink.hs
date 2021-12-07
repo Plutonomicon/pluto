@@ -177,7 +177,6 @@ incAbove level (DeBruijn n) = if n > level then DeBruijn (n+1) else DeBruijn n
 
 decDeBruijns :: Term -> Term
 decDeBruijns = decDeBruijns' 0
-  ,Program
 
 decDeBruijns' :: Index -> Term -> Term
 decDeBruijns' level = completeRec $ \case
