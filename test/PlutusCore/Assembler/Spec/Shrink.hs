@@ -4,7 +4,7 @@
 {-# LANGUAGE NumericUnderscores  #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module PlutusCore.Assembler.Spec.Shrink ( tests , testScriptTact) where
+module PlutusCore.Assembler.Spec.Shrink ( tests , testScriptTact, unitTest) where
 
 import qualified PlutusCore                               as PLC
 import           PlutusCore.Assembler.AnnDeBruijn
@@ -15,7 +15,7 @@ import           PlutusCore.Assembler.Shrink              (SafeTactic, Tactic,
                                                            Term,
                                                            defaultShrinkParams,
                                                            safeTactics, size,
-                                                           tactics)
+                                                           tactics,shrinkProgram)
 import           PlutusCore.Assembler.Spec.Gen            (genUplc)
 import           PlutusCore.Assembler.Spec.Prelude
 import           PlutusCore.Assembler.Tokenize
@@ -174,4 +174,18 @@ printUplcRes (uplc,(res,_)) = do
   putStrLn "result"
   print res
   putStrLn ""
+
+unitTest :: FilePath -> IO ()
+unitTest scriptFilePath = do
+  txt <- pack <$> readFile scriptFilePath
+  let uplc' = desugar . annDeBruijn =<< parse =<< tokenize txt
+  case uplc' of
+    Left e -> print e
+    Right prog -> do
+      let shrink = shrinkProgram prog
+      print prog
+      putStrLn "-------------------"
+      print shrink
+
+
 
