@@ -230,6 +230,14 @@ Note here that:
 - The `-v` option dumps intermediate ASTs. Ignore it, to display only the script out.
 - We pass a bytestring to the script, as a Pluto literal (which represents bytestrings beginning with `0x`). In general any Plutus `Data` value is accepted.
 
+The echo example can be used to view the Plutus `Data` representation of a given Pluto value, for example:
+
+```
+$ cabal run pluto -- run examples/echo.pluto '{ 2 = 43 }'
+Constant () (Some (ValueOf data (Map [(I 2,I 43)])))
+$
+```
+
 #### `eval`
 
 `eval` can be used to evaluate a top-level binding with (optional) arguments that represented as a Pluto expression. For example, this command evalutes the `greet` function from `hello.pluto` by applying it with the two given arguments.
