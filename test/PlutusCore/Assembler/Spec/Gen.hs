@@ -20,7 +20,8 @@ module PlutusCore.Assembler.Spec.Gen
 import           Data.List                               (intercalate)
 import qualified Hedgehog.Gen                            as Gen
 import qualified Hedgehog.Range                          as Range
-import           Prelude                                 (fromIntegral)
+import           Prelude                                 (fromIntegral, (++),
+                                                          (>))
 
 
 import           PlutusCore.Assembler.ConstantToTokens   (constantToTokens)
@@ -138,13 +139,12 @@ genMultiLineComment =
 
 
 genData :: RecursionDepth -> Gen Data
-genData 0 =
-  Gen.choice
+genData n =
+  Gen.choice (
   [ Data.I <$> genInteger
   , Data.B <$> genByteString
   ]
-genData n =
-  Gen.choice
+  ++ ( guard (n > 0) >>
   [ Data.I <$> genInteger
   , Data.B <$> genByteString
   , Data.List <$> Gen.list (Range.linear 0 10) (genData (n-1))
@@ -152,6 +152,8 @@ genData n =
                  ((,) <$> genData (n-1) <*> genData (n-1))
   , Data.Constr <$> genInteger <*> Gen.list (Range.linear 0 10) (genData (n-1))
   ]
+    )
+             )
 
 
 genConstantAST :: RecursionDepth -> Gen (Constant ())
@@ -366,39 +368,34 @@ genUplc = do
   genUplc' n (-1)
 
 genUplc' :: RecursionDepth -> Integer -> Gen UplcTerm
-genUplc' 0 (-1) =
-  Gen.choice
-  [ UPLC.Constant () <$> genConstant
-  , UPLC.Builtin () <$> genUplcBuiltin
-  , return $ UPLC.Error ()
-  ]
-genUplc' 0 level =
-  Gen.choice
-  [ UPLC.Var () . DeBruijn . Index . fromIntegral <$> Gen.integral (Range.linear 0 level)
-  , UPLC.Constant () <$> genConstant
-  , UPLC.Builtin () <$> genUplcBuiltin
-  , return $ UPLC.Error ()
-  ]
-genUplc' n level = let
-  next = genUplc' (n-1) level
+genUplc' depth level = let
+  next = genUplc' (depth-1) level
                     in
-  Gen.choice
-  [ UPLC.LamAbs () (DeBruijn (Index 0)) <$> genUplc' (n-1) (level+1)
+  Gen.choice $
+  [ UPLC.Constant () <$> genConstant depth
+  , UPLC.Builtin () <$> genUplcBuiltin
+  , return $ UPLC.Error ()
+  ]
+  ++ ( guard (level >= 0) >>
+  [ UPLC.Var () . DeBruijn . Index . fromIntegral <$> Gen.integral (Range.linear 0 level) ]
+     )
+  ++ ( guard (depth >= 1) >>
+  [ UPLC.LamAbs () (DeBruijn (Index 0)) <$> genUplc' (depth-1) (level+1)
   , UPLC.Force () <$> next
   , UPLC.Delay () <$> next
   , UPLC.Apply () <$> next <*> next
-  , genUplc' 0 level
   ]
+     )
 
-genConstant :: Gen (Some (ValueOf DefaultUni))
-genConstant =
+genConstant :: RecursionDepth -> Gen (Some (ValueOf DefaultUni))
+genConstant depth =
     Gen.choice
     [ PLC.Some . PLC.ValueOf PLC.DefaultUniInteger    <$> genInteger
     , PLC.Some . PLC.ValueOf PLC.DefaultUniByteString <$> genByteString
     , PLC.Some . PLC.ValueOf PLC.DefaultUniString     <$> genText
     , PLC.Some . PLC.ValueOf PLC.DefaultUniUnit       <$> mempty
     , PLC.Some . PLC.ValueOf PLC.DefaultUniBool       <$> Gen.choice (return <$> [True,False])
-    , PLC.Some . PLC.ValueOf PLC.DefaultUniData       <$> (genRecursionDepth >>= genData)
+    , PLC.Some . PLC.ValueOf PLC.DefaultUniData       <$> genData depth
     ]
 
 genUplcBuiltin :: Gen DefaultFun

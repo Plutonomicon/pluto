@@ -1,6 +1,8 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE NoImplicitPrelude   #-}
+{-# LANGUAGE NumericUnderscores  #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module PlutusCore.Assembler.Spec.Shrink ( tests , testScriptTact) where
 
@@ -10,13 +12,17 @@ import           PlutusCore.Assembler.Desugar
 import           PlutusCore.Assembler.Parse
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Shrink              (SafeTactic, Tactic,
-                                                           Term, removeDeadCode,
-                                                           subs)
+                                                           Term,
+                                                           defaultShrinkParams,
+                                                           safeTactics, size,
+                                                           tactics)
 import           PlutusCore.Assembler.Spec.Gen            (genUplc)
 import           PlutusCore.Assembler.Spec.Prelude
 import           PlutusCore.Assembler.Tokenize
 import           PlutusCore.Default                       (DefaultFun,
                                                            DefaultUni)
+import           PlutusCore.Evaluation.Machine.ExBudget   (ExBudget (..),
+                                                           ExRestrictingBudget (..))
 import           PlutusCore.Name                          (Name)
 import qualified UntypedPlutusCore.Core.Type              as UPLC
 import           UntypedPlutusCore.DeBruijn               (Index (..))
@@ -27,27 +33,33 @@ import           Control.Monad.State                      (State, evalState,
                                                            get, gets, modify,
                                                            put)
 import           Data.Text                                (pack)
+import           PlutusCore.Evaluation.Machine.ExMemory   (ExCPU (..),
+                                                           ExMemory (..))
 import           Prelude                                  (FilePath, Int, curry,
                                                            error, fromIntegral,
-                                                           not, print, putStrLn,
-                                                           readFile, tail, (!!))
+                                                           length, not, print,
+                                                           putStrLn, readFile,
+                                                           tail, (!!), (++))
 
 type Result = Either (CekEvaluationException DefaultUni DefaultFun) (UPLC.Term Name DefaultUni DefaultFun ())
 
-
-
 tests :: TestTree
 tests =
-  testGroup "shrinking tactics"
-  [ testSafeTactic removeDeadCode
-  , testTactic subs
-  ]
+  testGroup "shrinking tactics" (
+     [ testGroup tactName [ testSafeTactic tact , testSafeTacticShrinks tact ] | (tactName,tact) <- safeTactics defaultShrinkParams ] ++
+     [ testGroup tactName [ testTactic     tact ]                              | (tactName,tact) <- tactics     defaultShrinkParams ]
+                                )
 
 testSafeTactic :: SafeTactic -> TestTree
 testSafeTactic safeTactic = testTactic (return  . safeTactic)
 
+testSafeTacticShrinks :: SafeTactic -> TestTree
+testSafeTacticShrinks st = testProperty "Safe tactic doesn't grow code" . property $ do
+  uplc <- forAll genUplc
+  assert $ size uplc >= size (st uplc)
+
 testTactic :: Tactic -> TestTree
-testTactic tactic = testProperty "tactics don't break code" . property $ do
+testTactic tactic = testProperty "Tactic doesn't break code" . property $ do
   uplc <- forAll genUplc
   let shorts = tactic uplc
   let uplc' = run uplc
@@ -56,6 +68,16 @@ testTactic tactic = testProperty "tactics don't break code" . property $ do
 
 class Similar a where
   (~=) :: a -> a -> Bool
+
+instance Similar (Result,RestrictingSt) where
+  (lres,lcost) ~= (rres,rcost) = lres ~= rres && getCpu lcost >= getCpu rcost && getMem lcost >= getMem rcost
+    -- Remaining budget must be greater than or equal to unshortened script
+    -- it may be reasonable to weaken this in the future if we decide to sacrifice
+    -- speed and ram for script size
+    -- I should also probably rename the similar class now that it's asymetric
+    where
+      getCpu (RestrictingSt budget) = exBudgetCPU    . unExRestrictingBudget $ budget
+      getMem (RestrictingSt budget) = exBudgetMemory . unExRestrictingBudget $ budget
 
 instance Similar Result where
   a ~= b = case (a,b) of
@@ -77,11 +99,11 @@ instance Similar (UPLC.Term Name DefaultUni DefaultFun ()) where
        _                                               -> False
 
 
-(/~=) :: Result -> Result -> Bool
-a /~= b = not $ a ~= b
+(~/=) :: Similar a => a -> a -> Bool
+a ~/= b = not $ a ~= b
 
-run :: Term -> Result
-run = evaluateWithCek . unDeBruijn
+run :: Term -> (Result,RestrictingSt)
+run = runWithCek . unDeBruijn
 
 unDeBruijn :: Term -> UPLC.Term Name DefaultUni DefaultFun ()
 unDeBruijn = (`evalState` ([],names)) . unDeBruijn'
@@ -93,7 +115,9 @@ unDeBruijn' = \case
   UPLC.Var () name -> do
     scope <- gets fst
     let index = deBruijnToInt name
-    let name' = scope !! index
+    let name' = if index >= length scope
+                   then error $ "out of scope inex: " ++ show scope ++ " " ++ show index
+                   else scope !! index
     return $ UPLC.Var () name'
   UPLC.Force () term -> UPLC.Force () <$> unDeBruijn' term
   UPLC.Delay () term -> UPLC.Delay () <$> unDeBruijn' term
@@ -119,8 +143,11 @@ scopeName = do
       return new
     [] -> error "Unreachable"
 
-evaluateWithCek :: UPLC.Term Name DefaultUni DefaultFun () -> Either (CekEvaluationException DefaultUni DefaultFun) (UPLC.Term Name DefaultUni DefaultFun ())
-evaluateWithCek = evaluateCekNoEmit PLC.defaultCekParameters
+runWithCek :: UPLC.Term Name DefaultUni DefaultFun () -> (Result,RestrictingSt)
+runWithCek = runCekNoEmit PLC.defaultCekParameters ( restricting . ExRestrictingBudget $ ExBudget
+    { exBudgetCPU    = 1_000_000_000 :: ExCPU
+    , exBudgetMemory = 1_000_000 :: ExMemory
+      } )
 
 testScriptTact :: FilePath -> Tactic -> IO ()
 testScriptTact scriptFilePath tact = do
@@ -133,12 +160,12 @@ testScriptTact scriptFilePath tact = do
       printUplcRes (uplc,res)
       let bad = [ (shortening,res')
                 | shortening <- tact uplc
-                , let res' = run shortening , res /~= res' ]
+                , let res' = run shortening , res' ~/= res ]
       putStrLn "bad results:"
       forM_ bad printUplcRes
 
-printUplcRes :: (Term,Result) -> IO ()
-printUplcRes (uplc,res) = do
+printUplcRes :: (Term,(Result,RestrictingSt)) -> IO ()
+printUplcRes (uplc,(res,_)) = do
   putStrLn ""
   putStrLn "UPLC"
   print uplc

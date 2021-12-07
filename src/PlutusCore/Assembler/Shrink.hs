@@ -7,8 +7,10 @@ module PlutusCore.Assembler.Shrink
   ,Tactic
   ,SafeTactic
   ,Term
-  ,subs
-  ,removeDeadCode
+  ,defaultShrinkParams
+  ,tactics
+  ,safeTactics
+  ,size
               )where
 
 import           Codec.Serialise              (serialise)
@@ -42,11 +44,13 @@ type Tactic = Term -> [Term]
 type PartialTactic = Term -> Maybe [Term]
 
 data ShrinkParams = ShrinkParams
-  { safeTactics     :: [SafeTactic]
-  , tactics         :: [Tactic]
+  { safeTactics     :: [(String,SafeTactic)]
+  , tactics         :: [(String,Tactic)]
   , parallelTactics :: Int
   , parallelTerms   :: Int
   }
+-- Tactics are stored with strings so the tests can
+-- name the tactic that failed
 
 data WhnfRes = Err | Unclear  | Safe deriving (Eq,Ord)
 
@@ -75,9 +79,9 @@ runShrink sp = runShrink' sp . return
 
 runShrink' :: ShrinkParams -> [Term] -> Term
 runShrink' sp terms = let
-  terms1 = map (foldl (.) id (safeTactics sp)) terms
+  terms1 = map (foldl (.) id (snd <$> safeTactics sp)) terms
   terms2 = sortOn size $ do
-    tacts <- replicateM (parallelTactics sp) (tactics sp)
+    tacts <- replicateM (parallelTactics sp) (snd <$> tactics sp)
     foldl (>>=) terms1 tacts
     in if size (head terms) > size (head terms2)
            then runShrink' sp (take (parallelTerms sp) terms2)
@@ -88,8 +92,8 @@ size = fromIntegral . length . serialise . Script . UPLC.Program () (PLC.default
 
 defaultShrinkParams :: ShrinkParams
 defaultShrinkParams = ShrinkParams
-  { safeTactics = [removeDeadCode] -- [removeDeadCode]
-  , tactics = [subs] -- subs
+  { safeTactics = [("removeDeadCode",removeDeadCode),("clean pairs",cleanPairs)]
+  , tactics = [("subs",subs),("curry",curry)] -- subs
   , parallelTactics = 1
   , parallelTerms = 20
   }
@@ -228,8 +232,6 @@ safe2Arg = \case
   EqualsString             -> True
   ChooseUnit               -> True
   Trace                    -> True
-  FstPair                  -> True
-  SndPair                  -> True
   MkCons                   -> True
   ConstrData               -> True
   EqualsData               -> True
@@ -247,7 +249,56 @@ subs = completeTactic $ \case
           Err -> return . return $ UPLC.Error ()
       _ -> Nothing
 
+curry :: Tactic
+curry = completeTactic $ \case
+  UPLC.Apply _
+    (UPLC.LamAbs _ name term)
+    (UPLC.Apply _ (UPLC.Apply _ (UPLC.Builtin _ MkPairData) pairFst) pairSnd)
+      -> let
+            newTerm = cleanPairs $ appBind name
+              (UPLC.Apply () (UPLC.Apply () (UPLC.Builtin () MkPairData)
+                (UPLC.Var () (DeBruijn $ Index 0)))
+                (UPLC.Var () (DeBruijn $ Index 1)))
+                $ decDeBruijns term
+            in return . return $
+                    UPLC.Apply ()
+                      (UPLC.LamAbs ()
+                        (DeBruijn $ Index 0)
+                        (UPLC.Apply ()
+                          (UPLC.LamAbs ()
+                            (DeBruijn $ Index 0)
+                            newTerm
+                          )
+                          pairFst
+                        )
+                      ) pairSnd
+  _ -> Nothing
+
 -- Safe Tactics
+
+cleanPairs :: SafeTactic
+cleanPairs = completeRec $ \case
+  UPLC.Apply _
+    (UPLC.Builtin _ FstPair)
+    (UPLC.Apply _
+      (UPLC.Apply _
+        (UPLC.Builtin _ MkPairData)
+        fstTerm
+        )
+      _
+    ) -> Just $ cleanPairs fstTerm
+  UPLC.Apply _
+    (UPLC.Builtin _ SndPair)
+    (UPLC.Apply _
+      (UPLC.Apply _
+        (UPLC.Builtin _ MkPairData)
+        _
+        )
+      sndTerm
+    )
+   -> Just $ cleanPairs sndTerm
+  _ -> Nothing
+
 
 removeDeadCode :: SafeTactic
 removeDeadCode = completeRec $ \case
