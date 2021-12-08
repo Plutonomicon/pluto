@@ -15,6 +15,7 @@ import qualified PlutusCore.Assembler.FFI          as FFI
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Spec.Prelude
 import qualified PlutusCore.Assembler.Types.AST    as AST
+import           Prelude                           (Foldable (sum), toInteger)
 
 -- FFIs must be declared before tests
 hello :: AST.Program ()
@@ -24,11 +25,18 @@ $(FFI.bind 'hello
 $(FFI.bind 'hello
   "greet" [t|String -> String -> String|])
 
+
+sumProg :: AST.Program ()
+sumProg = $(FFI.load "examples/sum.pluto")
+$(FFI.bind 'sumProg
+  "sumIntList" [t|[Integer] -> Integer|])
+
 tests :: TestTree
 tests =
   testGroup
     "examples"
     [ helloTest
+    , sumTest
     ]
 
 helloTest :: TestTree
@@ -47,3 +55,11 @@ helloTest =
   where
     someText = Gen.string (Range.linear 3 9) Gen.alpha
 
+sumTest :: TestTree
+sumTest =
+  testGroup
+    "sum.pluto"
+    [ testProperty "can sum integers" . property $ do
+        xs <- fmap (fmap toInteger) $ forAll $ Gen.list (Range.linear 0 15) (Gen.int (Range.linear 0 100))
+        sumIntList xs === sum xs
+    ]

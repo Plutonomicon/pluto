@@ -3,20 +3,19 @@
 let 
   fix = (\f -> (\x -> f (\v -> x x v)) (\x -> f (\v -> x x v)));
   compose = (\f g x -> f (g x));
-  -- TODO: This is work in progress (see TODO inside)
   map = 
     fix 
       (\map f xs ->
         ! ! ChooseList 
           xs 
-          (\_ -> NullList) -- TODO
+          (\_ -> NullList) -- TODO: This doesn't work
           (\_ -> 
             ! MkCons 
               (f (! HeadList xs))
               (map f (! TailList xs)))
           ()
       );
-  -- TODO: Avoid passing 'f', via implementing `map` above.
+  -- FIXME: Avoid passing 'f', via implementing `map` above.
   sumList = (\f ->
     fix 
       (\sumList xs ->
@@ -26,8 +25,9 @@ let
           (\_ -> (f (! HeadList xs)) +i (sumList (! TailList xs))) 
           ()
         ) 
-  )
+  );
+  sumIntList = sumList UnIData `compose` UnListData
 in 
   (\nums -> 
-    sumList UnIData (UnListData nums)
-)
+    sumIntList nums
+  )

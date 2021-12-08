@@ -84,11 +84,11 @@ simpleD name type_ bodyF = do
     lambdaArgsFromType = \case
       ConT _ -> do
         pure []
-      AppT (AppT ArrowT (ConT _)) rest -> do
+      AppT (AppT ArrowT _) rest -> do
         n <- newName "_arg"
         (n :) <$> lambdaArgsFromType rest
-      _ ->
-        fail "simpleD: unexpected type"
+      t ->
+        fail $ "simpleD: unexpected type " <> show t
 
 -- | Like `liftData` but `Data.Text`-friendly.
 --
