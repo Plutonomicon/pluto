@@ -1,7 +1,8 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE LambdaCase           #-}
+{-# LANGUAGE NoImplicitPrelude    #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 -- |
 module PlutusCore.Assembler.Haskell
@@ -30,8 +31,8 @@ instance ToPluto Text where
   toPluto s =
     Constant () $ T () s
 
--- Overlaps the [a] instance below, because strings are represented internally,
--- as opposed to being opaque in a `Data`.
+-- Overlaps the ToData  instance below, because strings are represented
+-- internally, as opposed to being opaque in a `Data`.
 instance {-# OVERLAPPING #-} ToPluto [Char] where
   toPluto s =
     Constant () $ T () $ T.pack s
@@ -40,7 +41,7 @@ instance ToPluto Integer where
   toPluto x =
     Constant () $ I () x
 
-instance {-# OVERLAPPABLE #-} Plutus.ToData a => ToPluto [a] where
+instance {-# OVERLAPPABLE #-} Plutus.ToData a => ToPluto a where
   toPluto xs =
     Constant () $ D () $ Plutus.toData xs
 
@@ -55,3 +56,9 @@ instance FromUPLC Text where
 
 instance FromUPLC String where
   fromUPLC = fmap T.unpack . fromUPLC
+
+instance FromUPLC Data where
+  fromUPLC = \case
+    (UPLC.Constant () (PLC.Some (PLC.ValueOf PLC.DefaultUniData x))) -> pure x
+    _                                                                -> Nothing
+

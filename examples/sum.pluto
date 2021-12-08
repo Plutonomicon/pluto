@@ -3,19 +3,8 @@
 let 
   fix = (\f -> (\x -> f (\v -> x x v)) (\x -> f (\v -> x x v)));
   compose = (\f g x -> f (g x));
-  map = 
-    fix 
-      (\map f xs ->
-        ! ! ChooseList 
-          xs 
-          (\_ -> NullList) -- TODO: This doesn't work
-          (\_ -> 
-            ! MkCons 
-              (f (! HeadList xs))
-              (map f (! TailList xs)))
-          ()
-      );
-  -- FIXME: Avoid passing 'f', via implementing `map` above.
+  -- TODO: Write a `map` to avoid this 'f'. 
+  -- It will require us to figure out how to use NullList properly.
   sumList = (\f ->
     fix 
       (\sumList xs ->
