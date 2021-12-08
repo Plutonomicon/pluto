@@ -1,10 +1,11 @@
 {-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE GADTs               #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE NoImplicitPrelude   #-}
 {-# LANGUAGE NumericUnderscores  #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module PlutusCore.Assembler.Spec.Shrink ( tests , testScriptTact, unitTest) where
+module PlutusCore.Assembler.Spec.Shrink ( tests , testScriptTact, unitTest, fromFile, prettyPrintTerm) where
 
 import qualified PlutusCore                               as PLC
 import           PlutusCore.Assembler.AnnDeBruijn
@@ -150,6 +151,32 @@ runWithCek = runCekNoEmit PLC.defaultCekParameters ( restricting . ExRestricting
     , exBudgetMemory = 1_000_000     :: ExMemory
       } )
 
+prettyPrintProg :: Program -> String
+prettyPrintProg (UPLC.Program () _ term) = prettyPrintTerm term
+
+prettyPrintTerm :: Term -> String
+prettyPrintTerm = \case
+ UPLC.Var () (PLC.DeBruijn (Index i)) -> "V" ++ show i 
+ UPLC.LamAbs () (PLC.DeBruijn (Index 0)) term -> "(\\" ++ prettyPrintTerm term ++ ")"
+ UPLC.LamAbs () (PLC.DeBruijn (Index i)) _ -> error $ "bad DeBruijn index" ++ show i
+ UPLC.Apply () f@(UPLC.LamAbs{}) x -> prettyPrintTerm f ++ " (" ++ prettyPrintTerm x ++ ")"
+ UPLC.Apply () f x -> "(" ++ prettyPrintTerm f ++ ") (" ++ prettyPrintTerm x ++ ")"
+ UPLC.Force () term -> "!(" ++ prettyPrintTerm term ++ ")"
+ UPLC.Delay () term -> "#(" ++ prettyPrintTerm term ++ ")"
+ UPLC.Constant () (PLC.Some (PLC.ValueOf ty con)) -> case (ty,con) of
+                                             (PLC.DefaultUniInteger    ,i   ) -> show i
+                                             (PLC.DefaultUniByteString ,bs  ) -> show bs
+                                             (PLC.DefaultUniString     ,txt ) -> show txt
+                                             (PLC.DefaultUniUnit       ,()  ) -> "()"
+                                             (PLC.DefaultUniBool       ,b   ) -> show b
+                                             (PLC.DefaultUniData       ,dat ) -> show dat
+                                             _ -> "Exotic constant"
+ UPLC.Builtin () f -> show f
+ UPLC.Error () -> "Error"
+    
+
+ 
+
 fromFile :: FilePath -> IO (Either ErrorMessage Program)
 fromFile fp = do
   txt <- pack <$> readFile fp
@@ -187,9 +214,9 @@ unitTest scriptFilePath = do
     Left e -> print e
     Right prog -> do
       let shrink = shrinkProgram prog
-      print prog
+      putStrLn $ prettyPrintProg prog
       putStrLn "-------------------"
-      print shrink
+      putStrLn $ prettyPrintProg shrink
 
 
 

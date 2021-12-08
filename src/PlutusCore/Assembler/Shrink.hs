@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor     #-}
+--{-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
@@ -12,6 +12,7 @@ module PlutusCore.Assembler.Shrink
   ,tactics
   ,safeTactics
   ,size
+  ,stepShrink
               )where
 
 import           Codec.Serialise              (serialise)
@@ -55,20 +56,6 @@ data ShrinkParams = ShrinkParams
 
 data WhnfRes = Err | Unclear  | Safe deriving (Eq,Ord)
 
-data TacticFork a = Pure a | Fork Term (Term -> TacticFork a)
-  deriving Functor
-
--- TacticFork is a free monad used to implement complete
-
-instance Applicative TacticFork where
-  pure = Pure
-  (Pure f) <*> x   = f <$> x
-  (Fork t f) <*> x = Fork t (\t' -> f t' <*> x)
-
-instance Monad TacticFork where
-  (Pure x) >>= f   = f x
-  (Fork t x) >>= f = Fork t (x >=> f)
-
 shrinkProgram :: Program -> Program
 shrinkProgram (UPLC.Program ann version term) = UPLC.Program ann version (shrinkTerm term)
 
@@ -80,13 +67,18 @@ runShrink sp = runShrink' sp . return
 
 runShrink' :: ShrinkParams -> [Term] -> Term
 runShrink' sp terms = let
-  terms1 = map (foldl (.) id (snd <$> safeTactics sp)) terms
-  terms2 = sortOn size $ do
+  terms' = stepShrink sp terms
+     in if size (head terms) > size (head terms')
+         then runShrink' sp terms'
+         else head terms
+
+stepShrink :: ShrinkParams -> [Term] -> [Term]
+stepShrink sp terms = let
+  terms' = map (foldl (.) id (snd <$> safeTactics sp)) terms
+  in take (parallelTerms sp) $ sortOn size $ do
     tacts <- replicateM (parallelTactics sp) (snd <$> tactics sp)
-    foldl (>>=) terms1 tacts
-    in if size (head terms) > size (head terms2)
-           then runShrink' sp (take (parallelTerms sp) terms2)
-           else head terms
+    foldl (>>=) terms' tacts
+
 
 size :: Term -> Int
 size = fromIntegral . length . serialise . Script . UPLC.Program () (PLC.defaultVersion ())
@@ -94,28 +86,12 @@ size = fromIntegral . length . serialise . Script . UPLC.Program () (PLC.default
 defaultShrinkParams :: ShrinkParams
 defaultShrinkParams = ShrinkParams
   { safeTactics = [("removeDeadCode",removeDeadCode),("clean pairs",cleanPairs)]
-  , tactics = [("subs",subs),("curry",curry)] -- subs
+  , tactics = [("subs",subs),("curry",curry)] 
   , parallelTactics = 1
   , parallelTerms = 20
   }
 
 -- Utilities to make tactics simpler
-
-runTacticFork :: Tactic -> TacticFork Term -> [Term]
-runTacticFork _ (Pure term) = return term
-runTacticFork tact (Fork term cont) =
-  [ runTacticFork' (cont term') | term' <- tact term ]
-  ++ drop 1 (runTacticFork tact (cont term) )
-  -- This drop 1 removes the duplicate of the unaltered term
-  -- this requires that the original term is always
-  -- the head. complete enforces this by always postpend new terms
-
-runTacticFork' :: TacticFork Term -> Term
-runTacticFork' (Pure term)      = term
-runTacticFork' (Fork term cont) = runTacticFork' $ cont term
-
-forkOn :: Term -> TacticFork Term
-forkOn t = Fork t return
 
 completeTactic :: PartialTactic -> Tactic
 completeTactic pt term = let
@@ -128,8 +104,14 @@ descend :: Tactic -> Tactic
 descend tact = \case
        UPLC.Var ann name -> return $ UPLC.Var ann name
        UPLC.LamAbs ann name term -> UPLC.LamAbs ann name <$> tact term
-       UPLC.Apply ann funTerm varTerm ->
-         runTacticFork tact $ UPLC.Apply ann <$> forkOn funTerm <*> forkOn varTerm
+       UPLC.Apply ann funTerm varTerm -> let
+         funTerms = tact funTerm
+         varTerms = tact varTerm
+          in UPLC.Apply ann funTerm varTerm : 
+               [UPLC.Apply ann funTerm' varTerm | funTerm' <- drop 1 funTerms ] 
+            ++ [UPLC.Apply ann funTerm varTerm' | varTerm' <- drop 1 varTerms ]
+             
+         -- runTacticFork tact $ UPLC.Apply ann <$> forkOn funTerm <*> forkOn varTerm
        UPLC.Force ann term -> UPLC.Force ann <$> tact term
        UPLC.Delay ann term -> UPLC.Delay ann <$> tact term
        UPLC.Constant ann val -> return $ UPLC.Constant ann val
@@ -194,20 +176,26 @@ mentions name@(DeBruijn n) = \case
   _                        -> False
 
 whnf :: Term -> WhnfRes
-whnf = \case
+whnf = whnf' 100
+
+whnf' :: Int -> Term -> WhnfRes
+whnf' 0 = const Unclear
+whnf' n = let
+  rec = whnf' (n-1)
+    in \case
   UPLC.Var{} -> Unclear
   UPLC.LamAbs{} -> Safe
-  UPLC.Apply _ (UPLC.LamAbs _ name lTerm) valTerm -> case whnf valTerm of
+  UPLC.Apply _ (UPLC.LamAbs _ name lTerm) valTerm -> case rec valTerm of
                                                        Err -> Err
                                                        res -> min res $
-                                                          whnf (appBind name valTerm lTerm)
+                                                          rec (appBind name valTerm lTerm)
   UPLC.Apply _ (UPLC.Apply _ (UPLC.Builtin _ builtin) arg1) arg2 -> if safe2Arg builtin
-                                                                       then min (whnf arg1) (whnf arg2)
-                                                                       else min Unclear $ min (whnf arg1) (whnf arg2)
-  UPLC.Apply _ fTerm xTerm -> min Unclear $ min (whnf fTerm) (whnf xTerm)
+                                                                       then min (rec arg1) (rec arg2)
+                                                                       else min Unclear $ min (rec arg1) (rec arg2)
+  UPLC.Apply _ fTerm xTerm -> min Unclear $ min (rec fTerm) (rec xTerm)
     -- it should be possible to make this clear more often
     -- ie. a case over builtins
-  UPLC.Force _ (UPLC.Delay _ term) -> whnf term
+  UPLC.Force _ (UPLC.Delay _ term) -> rec term
   UPLC.Force{} -> Unclear
   UPLC.Delay{} -> Safe
   UPLC.Constant{} -> Safe

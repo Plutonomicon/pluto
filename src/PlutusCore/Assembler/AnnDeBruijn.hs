@@ -75,3 +75,4 @@ addNameToMap m n =
   Map.insert n (DeBruijn firstIndex) (incDeBruijn <$> m)
   where
     firstIndex = Index 1
+
