@@ -365,7 +365,7 @@ genConstantTerm n = do
 genUplc :: Gen UplcTerm
 genUplc = do
   n <- genRecursionDepth
-  genUplc' n (-1)
+  genUplc' n 0
 
 genUplc' :: RecursionDepth -> Integer -> Gen UplcTerm
 genUplc' depth level = let
@@ -376,8 +376,8 @@ genUplc' depth level = let
   , UPLC.Builtin () <$> genUplcBuiltin
   , return $ UPLC.Error ()
   ]
-  ++ ( guard (level >= 0) >>
-  [ UPLC.Var () . DeBruijn . Index . fromIntegral <$> Gen.integral (Range.linear 0 level) ]
+  ++ ( guard (level >= 1) >>
+  [ UPLC.Var () . DeBruijn . Index . fromIntegral <$> Gen.integral (Range.linear 1 level) ]
      )
   ++ ( guard (depth >= 1) >>
   [ UPLC.LamAbs () (DeBruijn (Index 0)) <$> genUplc' (depth-1) (level+1)

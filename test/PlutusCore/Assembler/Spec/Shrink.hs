@@ -11,7 +11,8 @@ import qualified PlutusCore                               as PLC
 import           PlutusCore.Assembler.AnnDeBruijn
 import           PlutusCore.Assembler.Assemble            (parseProgram)
 import           PlutusCore.Assembler.Desugar
---import           PlutusCore.Assembler.Parse
+import           Plutus.V1.Ledger.Scripts                 (Script(..))
+import qualified Plutus.V1.Ledger.Scripts                 as Scripts
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Shrink              (SafeTactic, Tactic,
                                                            Program,Term,
@@ -30,18 +31,13 @@ import qualified UntypedPlutusCore.Core.Type              as UPLC
 import           UntypedPlutusCore.DeBruijn               (Index (..))
 import           UntypedPlutusCore.Evaluation.Machine.Cek
 
---import           Control.Monad.Except
-import           Control.Monad.State                      (State, evalState,
-                                                           get, gets, modify,
-                                                           put)
 import           Data.Text                                (pack)
 import           PlutusCore.Evaluation.Machine.ExMemory   (ExCPU (..),
                                                            ExMemory (..))
-import           Prelude                                  (FilePath, Int, curry,
-                                                           fromIntegral,
+import           Prelude                                  (FilePath, curry,
                                                            not, print,
                                                            putStrLn, 
-                                                           tail, (!!), (++))
+                                                           (++))
 
 type Result = Either (CekEvaluationException DefaultUni DefaultFun) (UPLC.Term Name DefaultUni DefaultFun ())
 
@@ -105,51 +101,17 @@ instance Similar (UPLC.Term Name DefaultUni DefaultFun ()) where
 a ~/= b = not $ a ~= b
 
 run :: Term -> (Result,RestrictingSt)
-run = runWithCek . unDeBruijn
-
-unDeBruijn :: Term -> UPLC.Term Name DefaultUni DefaultFun ()
-unDeBruijn = (`evalState` ([],names)) . unDeBruijn'
+run = runWithCek . grabTerm . Scripts.mkTermToEvaluate . Script . UPLC.Program () (UPLC.Version () 0 0 0)
   where
-    names = [ PLC.Name (pack . show $ i) (PLC.Unique i) | i <- [1..] ]
-
-unDeBruijn' :: Term -> State ([Name],[Name]) (UPLC.Term Name DefaultUni DefaultFun ())
-unDeBruijn' = \case
-  UPLC.Var () name -> do
-    scope <- gets fst
-    let index = deBruijnToInt name
-    let name' = if index >= length scope
-                   then error $ "out of scope inex: " ++ show scope ++ " " ++ show index
-                   else scope !! index
-    return $ UPLC.Var () name'
-  UPLC.Force () term -> UPLC.Force () <$> unDeBruijn' term
-  UPLC.Delay () term -> UPLC.Delay () <$> unDeBruijn' term
-  UPLC.Apply () fTerm xTerm -> UPLC.Apply () <$> unDeBruijn' fTerm <*> unDeBruijn' xTerm
-  UPLC.LamAbs () _ term -> do
-    name <- scopeName
-    term' <- unDeBruijn' term
-    modify $ first tail -- unscope the name
-    return $ UPLC.LamAbs () name term'
-  UPLC.Builtin () b  -> return $ UPLC.Builtin  () b
-  UPLC.Constant () c -> return $ UPLC.Constant () c
-  UPLC.Error ()      -> return $ UPLC.Error ()
-
-deBruijnToInt :: PLC.DeBruijn -> Int
-deBruijnToInt (PLC.DeBruijn (Index n)) = fromIntegral n
-
-scopeName :: State ([Name],[Name]) Name
-scopeName = do
-  (scope,names) <- get
-  case names of
-    (new:rest) -> do
-      put (new:scope,rest)
-      return new
-    [] -> error "Unreachable"
+    grabTerm (Right (UPLC.Program _ _ term)) = term
+    grabTerm (Left err) = error $ show err
 
 runWithCek :: UPLC.Term Name DefaultUni DefaultFun () -> (Result,RestrictingSt)
 runWithCek = runCekNoEmit PLC.defaultCekParameters ( restricting . ExRestrictingBudget $ ExBudget
     { exBudgetCPU    = 1_000_000_000 :: ExCPU
     , exBudgetMemory = 1_000_000     :: ExMemory
       } )
+
 
 prettyPrintProg :: Program -> String
 prettyPrintProg (UPLC.Program () _ term) = prettyPrintTerm term
@@ -201,8 +163,8 @@ printUplcRes (uplc,(res,_)) = do
   putStrLn ""
   putStrLn "UPLC"
   print uplc
-  putStrLn "unDeBruijn"
-  print (unDeBruijn uplc)
+  --putStrLn "unDeBruijn"
+  --print (unDeBruijn uplc)
   putStrLn "result"
   print res
   putStrLn ""

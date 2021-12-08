@@ -143,7 +143,7 @@ incName :: DeBruijn -> DeBruijn
 incName (DeBruijn n) = DeBruijn (n+1)
 
 incDeBruijns :: Term -> Term
-incDeBruijns = incDeBruijns' 0
+incDeBruijns = incDeBruijns' 1
 
 incDeBruijns' :: Index -> Term -> Term
 incDeBruijns' level = completeRec $ \case
@@ -158,7 +158,7 @@ incAbove :: Index -> DeBruijn -> DeBruijn
 incAbove level (DeBruijn n) = if n > level then DeBruijn (n+1) else DeBruijn n
 
 decDeBruijns :: Term -> Term
-decDeBruijns = decDeBruijns' 0
+decDeBruijns = decDeBruijns' 1
 
 decDeBruijns' :: Index -> Term -> Term
 decDeBruijns' level = completeRec $ \case
@@ -233,7 +233,7 @@ subs :: Tactic
 subs = completeTactic $ \case
       UPLC.Apply _ (UPLC.LamAbs _ name funTerm) varTerm ->
         case whnf varTerm of
-          Safe -> return . return $ decDeBruijns $ appBind name varTerm funTerm
+          Safe -> return . return $ decDeBruijns $ appBind (incName name) varTerm funTerm
           Unclear -> Nothing
           Err -> return . return $ UPLC.Error ()
       _ -> Nothing
@@ -246,8 +246,8 @@ curry = completeTactic $ \case
       -> let
             newTerm = cleanPairs $ appBind name
               (UPLC.Apply () (UPLC.Apply () (UPLC.Builtin () MkPairData)
-                (UPLC.Var () (DeBruijn $ Index 0)))
                 (UPLC.Var () (DeBruijn $ Index 1)))
+                (UPLC.Var () (DeBruijn $ Index 2)))
                 $ decDeBruijns term
             in return . return $
                     UPLC.Apply ()
@@ -293,7 +293,7 @@ removeDeadCode :: SafeTactic
 removeDeadCode = completeRec $ \case
   (UPLC.Apply _ (UPLC.LamAbs _ name term) val) ->
     case whnf val of
-        Safe -> if mentions name term
+        Safe -> if mentions (incName name) term
            then Nothing
            else Just $ decDeBruijns term
         Unclear -> Nothing
