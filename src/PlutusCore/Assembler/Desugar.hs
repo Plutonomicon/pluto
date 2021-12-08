@@ -168,6 +168,7 @@ desugarBuiltin =
     BData                   -> PLC.BData
     UnConstrData            -> PLC.UnConstrData
     UnMapData               -> PLC.UnMapData
+    UnListData              -> PLC.UnListData
     UnBData                 -> PLC.UnBData
     UnIData                 -> PLC.UnIData
     EqualsData              -> PLC.EqualsData
