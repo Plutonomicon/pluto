@@ -3,20 +3,22 @@
 let 
   fix = (\f -> (\x -> f (\v -> x x v)) (\x -> f (\v -> x x v)));
   compose = (\f g x -> f (g x));
-  -- TODO: Write a `map` to avoid this 'f'. 
-  -- It will require us to figure out how to use NullList properly.
-  sumList = (\f ->
+
+  fold = (\f ->
     fix 
-      (\sumList xs ->
+      (\fold x0 xs ->
         ! ! ChooseList 
           xs 
-          (\_ -> 0) 
-          (\_ -> (f (! HeadList xs)) +i (sumList (! TailList xs))) 
+          (\_ -> x0)
+          (\_ -> fold (f x0 (! HeadList xs)) (! TailList xs))
           ()
-        ) 
-  );
-  sumIntList = sumList UnIData `compose` UnListData
+      )
+    );
+
+  sumList_ = 
+    fold 
+      (\x y -> x +i (UnIData y) )
+      0;
+  sumIntList = sumList_ `compose` UnListData
 in 
-  (\nums -> 
-    sumIntList nums
-  )
+  (\nums -> sumIntList nums)
