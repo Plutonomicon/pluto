@@ -47,7 +47,7 @@ evalToplevelBindingToHaskellValueMust name args prog =
         error $ show err
       Right t ->
         case H.fromUPLC t of
-          Nothing -> error "processResult: failed to convert term"
+          Nothing -> error $ "processResult: failed to convert term: " <> show t
           Just x  -> x
 
 evalToplevelBinding :: AST.Name -> [AST.Term ()] -> AST.Program () -> Either Error (Term Name DefaultUni DefaultFun ())

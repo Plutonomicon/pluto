@@ -367,6 +367,7 @@ builtin =
   , BData <$ string "BData"
   , UnConstrData <$ string "UnConstrData"
   , UnMapData <$ string "UnMapData"
+  , UnListData <$ string "UnListData"
   , UnBData <$ string "UnBData"
   , UnIData <$ string "UnIData"
   , EqualsData <$ string "EqualsData"

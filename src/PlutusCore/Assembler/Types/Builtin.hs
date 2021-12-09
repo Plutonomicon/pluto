@@ -54,6 +54,7 @@ data Builtin =
   | BData
   | UnConstrData
   | UnMapData
+  | UnListData
   | UnBData
   | UnIData
   | EqualsData

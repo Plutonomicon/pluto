@@ -281,3 +281,28 @@ $(FFI.bind 'hello
 ```
 
 The above exposes the two top-level bindings from the hello.pluto program, using the given type declaration. 
+
+### Working with Plutus `Data`
+
+The `data` keyword can be used to create lists, maps, and sigma types. For example:
+
+```lisp
+let 
+  x = data [1, 2, 3]
+in 
+  x
+```
+
+Plutus provides a number of builtins to work with `Data`. For operating on lists, we have:
+
+- `UnListData :: Data -> [Data]` (fails if the Data is not a list)
+- `HeadList :: [a] -> a` (fails if list is empty)
+- `TailList :: [a] -> [a]`
+- `ChooseList` can be used to "case" on lists
+
+Higher-level operations on lists can be written in Pluto itself. For example, `fibonacci.pluto` and `sum.pluto` defines "fold".
+
+```
+$ cabal run pluto -- run examples/fibonacci.pluto 5
+Constant () (Some (ValueOf data (List [I 8,I 5,I 3,I 2,I 1,I 1,I 0])))
+```

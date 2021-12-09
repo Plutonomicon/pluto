@@ -1,0 +1,41 @@
+let 
+  fix = (\f -> (\x -> f (\v -> x x v)) (\x -> f (\v -> x x v)));
+  fold = (\f ->
+    fix 
+      (\fold x0 xs ->
+        ! ! ChooseList 
+          xs 
+          (\_ -> x0)
+          (\_ -> fold (f x0 (! HeadList xs)) (! TailList xs))
+          ()
+      )
+    );
+
+  -- | range :: Int -> Int -> [Int]
+  -- 
+  -- range 1 5 => [1, 2, 3, 4, 5]
+  range =
+    fix 
+      (\range acc a b ->
+        if b `LessThanEqualsInteger` a
+            then acc 
+            else ! MkCons (IData a) (range acc (a +i 1) b));
+
+  -- | fibonacciSeries :: Int -> [Int]
+  --
+  -- fibonacciSeries 10 => [0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55] (in reverse)
+  fibonacciSeries_ = (\n ->
+    fold 
+      (\acc _ -> 
+          let b = ! HeadList acc;
+              a = ! HeadList (! TailList acc)
+          in ! MkCons (IData (UnIData a +i UnIData b)) acc)
+      (UnListData (data [1, 0]))
+      (range (UnListData (data [])) 0 n)
+  );
+
+  fibonacciSeries = (\cnt ->
+    ListData (fibonacciSeries_ (UnIData cnt)))
+in
+  fibonacciSeries
+ 
