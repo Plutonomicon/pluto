@@ -31,11 +31,11 @@ let
               a = ! HeadList (! TailList acc)
           in ! MkCons (IData (UnIData a +i UnIData b)) acc)
       (UnListData (data [1, 0]))
-      (range (UnListData (data [])) 1 n)
+      (range (UnListData (data [])) 0 n)
   );
 
   fibonacciSeries = (\cnt ->
     ListData (fibonacciSeries_ (UnIData cnt)))
 in
   fibonacciSeries
-  
+ 

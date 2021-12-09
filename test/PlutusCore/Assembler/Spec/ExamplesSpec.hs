@@ -80,6 +80,6 @@ fibTest =
     "fibonacci.pluto"
     [ testProperty "fib works" . property $ do
         n <- fmap toInteger $ forAll $ Gen.int (Range.linear 0 100)
-        let ans = foldl' (\acc _ -> (head acc + head (tail acc)) : acc) [1, 0] [1..(n-1)]
+        let ans = foldl' (\acc _ -> (head acc + head (tail acc)) : acc) [1, 0] [0..(n-1)]
         fibonacciSeries (toBuiltinData n) === PLC.List (PLC.I <$> ans)
     ]
