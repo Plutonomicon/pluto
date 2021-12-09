@@ -45,6 +45,7 @@ data ShrinkParams = ShrinkParams
   , tactics         :: [(String,Tactic)]
   , parallelTactics :: Integer
   , parallelTerms   :: Integer
+  , extraSteps      :: Integer
   }
 -- Tactics are stored with strings so the tests can
 -- automatically add the name to the name of the
@@ -59,14 +60,15 @@ shrinkTerm :: Term -> Term
 shrinkTerm = runShrink defaultShrinkParams
 
 runShrink :: ShrinkParams -> Term -> Term
-runShrink sp = runShrink' sp . return
+runShrink sp = runShrink' (extraSteps sp) sp . return
 
-runShrink' :: ShrinkParams -> [Term] -> Term
-runShrink' sp terms = let
-  terms' = stepShrink sp terms
-     in if size (head terms) > size (head terms')
-         then runShrink' sp terms'
-         else head terms
+runShrink' :: Integer -> ShrinkParams -> [Term] -> Term
+runShrink' es sp terms 
+  | size (head terms) > size (head terms') = runShrink' (extraSteps sp) sp terms'
+  | es > 0                                 = runShrink' (es -1)         sp terms'
+  | otherwise                              = head terms
+    where
+      terms' = stepShrink sp terms
 
 stepShrink :: ShrinkParams -> [Term] -> [Term]
 stepShrink sp terms = let
@@ -85,6 +87,7 @@ defaultShrinkParams = ShrinkParams
   , tactics = [("subs",subs),("unsubs",unsubs),("curry",uplcCurry)]
   , parallelTactics = 1
   , parallelTerms = 20
+  , extraSteps = 5
   }
 
 -- Utilities to make tactics simpler
@@ -284,7 +287,7 @@ unDepth' localDepth (depth,t) = ( completeRec $ \case
   UPLC.Var _ (DeBruijn (Index nat))
     | i <= localDepth         -> Just $ UPLC.Var () (DeBruijn (Index nat))
     | i >= localDepth + depth -> Just $ UPLC.Var () (DeBruijn (Index (fromIntegral $ i - depth)))
-    | True -> error "unDepth called with bad term"
+    | otherwise -> error "unDepth called with bad term"
       where
         i = fromIntegral nat
   UPLC.LamAbs () name term ->
