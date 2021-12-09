@@ -82,8 +82,13 @@ simpleD name type_ bodyF = do
   where
     lambdaArgsFromType :: Type -> Q [Name]
     lambdaArgsFromType = \case
+      -- a
       ConT _ -> do
         pure []
+      -- [a]
+      AppT ListT _ -> do
+        pure []
+      -- a -> b
       AppT (AppT ArrowT _) rest -> do
         n <- newName "_arg"
         (n :) <$> lambdaArgsFromType rest
