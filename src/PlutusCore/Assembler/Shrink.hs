@@ -82,7 +82,7 @@ size = scriptSize . Script . UPLC.Program () (UPLC.Version () 0 0 0)
 defaultShrinkParams :: ShrinkParams
 defaultShrinkParams = ShrinkParams
   { safeTactics = [("removeDeadCode",removeDeadCode),("clean pairs",cleanPairs)]
-  , tactics = [("subs",subs),("curry",uplcCurry)]
+  , tactics = [("subs",subs),("unsubs",unsubs),("curry",uplcCurry)]
   , parallelTactics = 1
   , parallelTerms = 20
   }
@@ -221,6 +221,77 @@ safe2Arg = \case
   MkPairData               -> True
   _                        -> False
 
+subTerms :: Term -> [(Integer,Term)]
+subTerms = subTerms' 0
+
+subTerms' :: Integer -> Term -> [(Integer,Term)]
+subTerms' n t = (n,t):case t of
+                 UPLC.LamAbs _ _ term -> subTerms' (n+1) term
+                 UPLC.Apply _ funTerm varTerm -> subTerms' n funTerm ++ subTerms' n varTerm
+                 UPLC.Force _ term -> subTerms' n term
+                 UPLC.Delay _ term -> subTerms' n term
+                 UPLC.Var{}      -> []
+                 UPLC.Constant{} -> []
+                 UPLC.Builtin{}  -> []
+                 UPLC.Error{}    -> []
+
+unsub :: (Integer,Term) -> DeBruijn -> Term -> Term
+unsub = unsub' 0
+
+unsub' :: Integer -> (Integer,Term) -> DeBruijn -> Term -> Term
+unsub' depth replacing@(replacingd,replacingt) replaceWith = completeRec $ \case
+  UPLC.LamAbs () name term ->
+    Just $ UPLC.LamAbs () name $
+      unsub' (depth+1) (replacingd,replacingt) (incName replaceWith) term
+  term
+    | (depth,term) `equiv` replacing  -> Just $ UPLC.Var () replaceWith
+  _ -> Nothing
+
+equiv :: (Integer,Term) -> (Integer,Term) -> Bool
+equiv = equiv' 0
+
+equiv' :: Integer -> (Integer,Term) -> (Integer,Term) -> Bool
+equiv' localDepth (ldepth,lterm) (rdepth,rterm)
+  = case (lterm,rterm) of
+      (UPLC.Error    _       ,UPLC.Error    _       ) -> True
+      (UPLC.Builtin  _ lf    ,UPLC.Builtin  _ rf    ) -> lf   == rf
+      (UPLC.Constant _ lval  ,UPLC.Constant _ rval  ) -> lval == rval
+      (UPLC.Force    _ lt    ,UPLC.Force    _ rt    ) ->
+        equiv' localDepth (ldepth,lt) (rdepth,rt)
+      (UPLC.Delay    _ lt    ,UPLC.Delay    _ rt    ) ->
+        equiv' localDepth (ldepth,lt) (rdepth,rt)
+      (UPLC.Apply _ lf lx    ,UPLC.Apply _ rf rx    ) ->
+        equiv' localDepth (ldepth,lf) (rdepth,rf) &&
+        equiv' localDepth (ldepth,lx) (rdepth,rx)
+      (UPLC.LamAbs _ _ lt    ,UPLC.LamAbs _ _ rt    ) ->
+        equiv' (localDepth +1) (ldepth,lt) (rdepth,rt)
+      (UPLC.Var _ (DeBruijn (Index lin)) ,UPLC.Var _ (DeBruijn(Index rin)) )
+        | li == ri && ri < localDepth -> True -- variables are local and equal
+        | li - ldepth == ri - rdepth
+          && li > localDepth + ldepth -> True
+            where
+              li = fromIntegral lin
+              ri = fromIntegral rin
+          -- variables are the same reference which is
+          -- further out than the last common ancestor
+      _ -> False
+
+unDepth :: (Integer,Term) -> Term
+unDepth = unDepth' 0
+
+unDepth' :: Integer -> (Integer,Term) -> Term
+unDepth' localDepth (depth,t) = ( completeRec $ \case
+  UPLC.Var _ (DeBruijn (Index nat))
+    | i <= localDepth         -> Just $ UPLC.Var () (DeBruijn (Index nat))
+    | i >= localDepth + depth -> Just $ UPLC.Var () (DeBruijn (Index (fromIntegral $ i - depth)))
+    | True -> error "unDepth called with bad term"
+      where
+        i = fromIntegral nat
+  UPLC.LamAbs () name term ->
+    Just $ UPLC.LamAbs () name $ unDepth' (localDepth +1) (depth,term)
+  _ -> Nothing
+                                ) t
+
 -- Tactics
 
 subs :: Tactic
@@ -231,6 +302,25 @@ subs = completeTactic $ \case
           Unclear -> Nothing
           Err -> return . return $ UPLC.Error ()
       _ -> Nothing
+
+unsubs :: Tactic
+unsubs = completeTactic $ \case
+  UPLC.Apply () funTerm varTerm -> let
+    fSubterms = subTerms funTerm
+    vSubterms = subTerms varTerm
+        in Just $ do
+          fSubterm <- fSubterms
+          vSubterm <- vSubterms
+          guard $ fSubterm `equiv` vSubterm
+          let funTerm' = unsub fSubterm (DeBruijn (Index 1)) funTerm
+              varTerm' = unsub vSubterm (DeBruijn (Index 1)) varTerm
+          return $ UPLC.Apply ()
+            (
+              UPLC.LamAbs () (DeBruijn (Index 0))
+                ( UPLC.Apply () funTerm' varTerm' )
+            ) (unDepth fSubterm)
+
+  _ -> Nothing
 
 uplcCurry :: Tactic
 uplcCurry = completeTactic $ \case

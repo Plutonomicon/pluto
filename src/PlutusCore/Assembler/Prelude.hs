@@ -52,7 +52,7 @@ import           Prelude              (Bool (False, True), Bounded, Char,
                                        fromIntegral, fst, head, id, mconcat,
                                        min, negate, not, readFile, reverse, snd,
                                        take, ($), (&&), (++), (.), (/=), (<$),
-                                       (<$>), (<=), (<>), (=<<), (==), (>),
+                                       (<$>), (<), (<=), (<>), (=<<), (==), (>),
                                        (>=), (>>), (||))
 
 (<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
