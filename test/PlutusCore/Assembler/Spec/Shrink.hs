@@ -7,6 +7,9 @@
 
 module PlutusCore.Assembler.Spec.Shrink ( tests , testScriptTact, unitTest, fromFile, prettyPrintTerm) where
 
+import           System.IO                                (FilePath, print,
+                                                           putStrLn)
+
 import           Plutus.V1.Ledger.Scripts                 (Script (..))
 import qualified Plutus.V1.Ledger.Scripts                 as Scripts
 import qualified PlutusCore                               as PLC
@@ -35,9 +38,6 @@ import           UntypedPlutusCore.Evaluation.Machine.Cek
 import           Data.Text                                (pack)
 import           PlutusCore.Evaluation.Machine.ExMemory   (ExCPU (..),
                                                            ExMemory (..))
-import           Prelude                                  (FilePath, curry, not,
-                                                           print, putStrLn,
-                                                           (++))
 
 type Result = Either (CekEvaluationException DefaultUni DefaultFun) (UPLC.Term Name DefaultUni DefaultFun ())
 

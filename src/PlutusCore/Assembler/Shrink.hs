@@ -14,19 +14,15 @@ module PlutusCore.Assembler.Shrink
   ,stepShrink
               )where
 
-import           Codec.Serialise              (serialise)
-import           Control.Monad.Reader
-import           Data.ByteString.Lazy         (length)
-import           Data.List                    (sortOn)
-import           Plutus.V1.Ledger.Scripts     (Script (..))
-import qualified PlutusCore.Core              as PLC
-import           Prelude                      (Int, drop, fromIntegral, head,
-                                               id, map, min, take, (++), (>))
-import qualified UntypedPlutusCore.Core.Type  as UPLC
 
-import           PlutusCore.Assembler.Prelude hiding (length)
+import           Control.Monad.Reader
+import           Data.List                    (sortOn)
+import           Plutus.V1.Ledger.Scripts     (Script (..), scriptSize)
+import           PlutusCore.Assembler.Prelude
 import           PlutusCore.DeBruijn          (DeBruijn (..), Index (..))
 import           PlutusCore.Default           (DefaultFun (..), DefaultUni)
+import qualified UntypedPlutusCore.Core.Type  as UPLC
+
 
 type Term    = UPLC.Term    DeBruijn DefaultUni DefaultFun ()
 type Program = UPLC.Program DeBruijn DefaultUni DefaultFun ()
@@ -40,18 +36,18 @@ type Tactic = Term -> [Term]
 -- because they can be counter productive
 -- they return a list of terms gotten by
 -- applying the tactic at different points
--- in the program. The head of the list is 
+-- in the program. The head of the list is
 -- reservered for the original term
 type PartialTactic = Term -> Maybe [Term]
 
 data ShrinkParams = ShrinkParams
   { safeTactics     :: [(String,SafeTactic)]
   , tactics         :: [(String,Tactic)]
-  , parallelTactics :: Int
-  , parallelTerms   :: Int
+  , parallelTactics :: Integer
+  , parallelTerms   :: Integer
   }
 -- Tactics are stored with strings so the tests can
--- automatically add the name to the name of the 
+-- automatically add the name to the name of the
 -- property test
 
 data WhnfRes = Err | Unclear  | Safe deriving (Eq,Ord)
@@ -74,19 +70,19 @@ runShrink' sp terms = let
 
 stepShrink :: ShrinkParams -> [Term] -> [Term]
 stepShrink sp terms = let
-  terms' = map (foldl (.) id (snd <$> safeTactics sp)) terms
-  in take (parallelTerms sp) $ sortOn size $ do
-    tacts <- replicateM (parallelTactics sp) (snd <$> tactics sp)
+  terms' = fmap (foldl (.) id (snd <$> safeTactics sp)) terms
+  in take (fromIntegral $ parallelTerms sp) $ sortOn size $ do
+    tacts <- replicateM (fromIntegral $ parallelTactics sp) (snd <$> tactics sp)
     foldl (>>=) terms' tacts
 
 
-size :: Term -> Int
-size = fromIntegral . length . serialise . Script . UPLC.Program () (PLC.defaultVersion ())
+size :: Term -> Integer
+size = scriptSize . Script . UPLC.Program () (UPLC.Version () 0 0 0)
 
 defaultShrinkParams :: ShrinkParams
 defaultShrinkParams = ShrinkParams
   { safeTactics = [("removeDeadCode",removeDeadCode),("clean pairs",cleanPairs)]
-  , tactics = [("subs",subs),("curry",curry)]
+  , tactics = [("subs",subs),("curry",uplcCurry)]
   , parallelTactics = 1
   , parallelTerms = 20
   }
@@ -176,7 +172,7 @@ mentions name@(DeBruijn n) = \case
 whnf :: Term -> WhnfRes
 whnf = whnf' 100
 
-whnf' :: Int -> Term -> WhnfRes
+whnf' :: Integer -> Term -> WhnfRes
 whnf' 0 = const Unclear
 whnf' n = let
   rec = whnf' (n-1)
@@ -236,8 +232,8 @@ subs = completeTactic $ \case
           Err -> return . return $ UPLC.Error ()
       _ -> Nothing
 
-curry :: Tactic
-curry = completeTactic $ \case
+uplcCurry :: Tactic
+uplcCurry = completeTactic $ \case
   UPLC.Apply _
     (UPLC.LamAbs _ name term)
     (UPLC.Apply _ (UPLC.Apply _ (UPLC.Builtin _ MkPairData) pairFst) pairSnd)

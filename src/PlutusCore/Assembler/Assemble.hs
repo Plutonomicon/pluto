@@ -12,7 +12,7 @@ import           PlutusCore.Assembler.AnnDeBruijn        (annDeBruijn)
 import           PlutusCore.Assembler.Desugar            (desugar)
 import           PlutusCore.Assembler.Parse              (parse)
 import           PlutusCore.Assembler.Prelude
---import           PlutusCore.Assembler.Shrink             (shrinkProgram)
+import           PlutusCore.Assembler.Shrink             (shrinkProgram)
 import           PlutusCore.Assembler.Tokenize           (tokenize)
 import           PlutusCore.Assembler.Types.AST          (Program)
 import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage)
@@ -26,7 +26,7 @@ assemble name = fmap (toStrict . serialise) . translate <=< parseProgram name
 
 -- | Translatre the given Pluto code into a Plutus Script
 translate :: Show ann => Program ann -> Either ErrorMessage Script
-translate = fmap Script . (desugar . annDeBruijn)
+translate = fmap (Script . shrinkProgram) . (desugar . annDeBruijn)
 
 
 parseProgram :: SourceName -> Text -> Either ErrorMessage (Program SourcePos)

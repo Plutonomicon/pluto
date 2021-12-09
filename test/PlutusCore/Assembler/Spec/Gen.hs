@@ -20,9 +20,6 @@ module PlutusCore.Assembler.Spec.Gen
 import           Data.List                               (intercalate)
 import qualified Hedgehog.Gen                            as Gen
 import qualified Hedgehog.Range                          as Range
-import           Prelude                                 (fromIntegral, (++),
-                                                          (>))
-
 
 import           PlutusCore.Assembler.ConstantToTokens   (constantToTokens)
 import           PlutusCore.Assembler.Prelude
