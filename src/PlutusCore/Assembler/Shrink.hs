@@ -1,4 +1,3 @@
---{-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
@@ -41,8 +40,8 @@ type Tactic = Term -> [Term]
 -- because they can be counter productive
 -- they return a list of terms gotten by
 -- applying the tactic at different points
--- in the program and the leftmost result
--- is always the one gotten by doing nothing
+-- in the program. The head of the list is 
+-- reservered for the original term
 type PartialTactic = Term -> Maybe [Term]
 
 data ShrinkParams = ShrinkParams
@@ -52,7 +51,8 @@ data ShrinkParams = ShrinkParams
   , parallelTerms   :: Int
   }
 -- Tactics are stored with strings so the tests can
--- name the tactic that failed
+-- automatically add the name to the name of the 
+-- property test
 
 data WhnfRes = Err | Unclear  | Safe deriving (Eq,Ord)
 
@@ -86,7 +86,7 @@ size = fromIntegral . length . serialise . Script . UPLC.Program () (PLC.default
 defaultShrinkParams :: ShrinkParams
 defaultShrinkParams = ShrinkParams
   { safeTactics = [("removeDeadCode",removeDeadCode),("clean pairs",cleanPairs)]
-  , tactics = [("subs",subs),("curry",curry)] 
+  , tactics = [("subs",subs),("curry",curry)]
   , parallelTactics = 1
   , parallelTerms = 20
   }
@@ -107,11 +107,9 @@ descend tact = \case
        UPLC.Apply ann funTerm varTerm -> let
          funTerms = tact funTerm
          varTerms = tact varTerm
-          in UPLC.Apply ann funTerm varTerm : 
-               [UPLC.Apply ann funTerm' varTerm | funTerm' <- drop 1 funTerms ] 
+          in UPLC.Apply ann funTerm varTerm :
+               [UPLC.Apply ann funTerm' varTerm | funTerm' <- drop 1 funTerms ]
             ++ [UPLC.Apply ann funTerm varTerm' | varTerm' <- drop 1 varTerms ]
-             
-         -- runTacticFork tact $ UPLC.Apply ann <$> forkOn funTerm <*> forkOn varTerm
        UPLC.Force ann term -> UPLC.Force ann <$> tact term
        UPLC.Delay ann term -> UPLC.Delay ann <$> tact term
        UPLC.Constant ann val -> return $ UPLC.Constant ann val

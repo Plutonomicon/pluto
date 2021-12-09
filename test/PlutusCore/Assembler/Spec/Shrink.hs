@@ -7,18 +7,19 @@
 
 module PlutusCore.Assembler.Spec.Shrink ( tests , testScriptTact, unitTest, fromFile, prettyPrintTerm) where
 
+import           Plutus.V1.Ledger.Scripts                 (Script (..))
+import qualified Plutus.V1.Ledger.Scripts                 as Scripts
 import qualified PlutusCore                               as PLC
 import           PlutusCore.Assembler.AnnDeBruijn
 import           PlutusCore.Assembler.Assemble            (parseProgram)
 import           PlutusCore.Assembler.Desugar
-import           Plutus.V1.Ledger.Scripts                 (Script(..))
-import qualified Plutus.V1.Ledger.Scripts                 as Scripts
 import           PlutusCore.Assembler.Prelude
-import           PlutusCore.Assembler.Shrink              (SafeTactic, Tactic,
-                                                           Program,Term,
+import           PlutusCore.Assembler.Shrink              (Program, SafeTactic,
+                                                           Tactic, Term,
                                                            defaultShrinkParams,
-                                                           safeTactics, size,
-                                                           tactics,shrinkProgram)
+                                                           safeTactics,
+                                                           shrinkProgram, size,
+                                                           tactics)
 import           PlutusCore.Assembler.Spec.Gen            (genUplc)
 import           PlutusCore.Assembler.Spec.Prelude
 import           PlutusCore.Assembler.Tokenize
@@ -34,9 +35,8 @@ import           UntypedPlutusCore.Evaluation.Machine.Cek
 import           Data.Text                                (pack)
 import           PlutusCore.Evaluation.Machine.ExMemory   (ExCPU (..),
                                                            ExMemory (..))
-import           Prelude                                  (FilePath, curry,
-                                                           not, print,
-                                                           putStrLn, 
+import           Prelude                                  (FilePath, curry, not,
+                                                           print, putStrLn,
                                                            (++))
 
 type Result = Either (CekEvaluationException DefaultUni DefaultFun) (UPLC.Term Name DefaultUni DefaultFun ())
@@ -96,7 +96,6 @@ instance Similar (UPLC.Term Name DefaultUni DefaultFun ()) where
        (UPLC.Error    ()      ,UPLC.Error    ()      ) -> True
        _                                               -> False
 
-
 (~/=) :: Similar a => a -> a -> Bool
 a ~/= b = not $ a ~= b
 
@@ -104,7 +103,7 @@ run :: Term -> (Result,RestrictingSt)
 run = runWithCek . grabTerm . Scripts.mkTermToEvaluate . Script . UPLC.Program () (UPLC.Version () 0 0 0)
   where
     grabTerm (Right (UPLC.Program _ _ term)) = term
-    grabTerm (Left err) = error $ show err
+    grabTerm (Left err)                      = error $ show err
 
 runWithCek :: UPLC.Term Name DefaultUni DefaultFun () -> (Result,RestrictingSt)
 runWithCek = runCekNoEmit PLC.defaultCekParameters ( restricting . ExRestrictingBudget $ ExBudget
@@ -118,7 +117,7 @@ prettyPrintProg (UPLC.Program () _ term) = prettyPrintTerm term
 
 prettyPrintTerm :: Term -> String
 prettyPrintTerm = \case
- UPLC.Var () (PLC.DeBruijn (Index i)) -> "V" ++ show i 
+ UPLC.Var () (PLC.DeBruijn (Index i)) -> "V" ++ show i
  UPLC.LamAbs () (PLC.DeBruijn (Index 0)) term -> "(\\" ++ prettyPrintTerm term ++ ")"
  UPLC.LamAbs () (PLC.DeBruijn (Index i)) _ -> error $ "bad DeBruijn index" ++ show i
  UPLC.Apply () f@(UPLC.LamAbs{}) x -> prettyPrintTerm f ++ " (" ++ prettyPrintTerm x ++ ")"
@@ -135,9 +134,6 @@ prettyPrintTerm = \case
                                              _ -> "Exotic constant"
  UPLC.Builtin () f -> show f
  UPLC.Error () -> "Error"
-    
-
- 
 
 fromFile :: FilePath -> IO (Either ErrorMessage Program)
 fromFile fp = do
@@ -179,6 +175,4 @@ unitTest scriptFilePath = do
       putStrLn $ prettyPrintProg prog
       putStrLn "-------------------"
       putStrLn $ prettyPrintProg shrink
-
-
 
