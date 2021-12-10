@@ -186,10 +186,17 @@ executable pluto-sample-contract
         plutus-ledger-api,
         plutus-tx,
         plutus-tx-plugin,
+        lens,
         text,
         containers,
         data-default,
-        freer-extras
+        freer-extras,
+        hedgehog,
+        tasty,
+        tasty-hedgehog,
+        tasty-quickcheck,
+        QuickCheck
+ 
 
     hs-source-dirs:   examples/contracts/sample
     default-language: Haskell2010
