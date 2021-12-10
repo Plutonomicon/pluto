@@ -12,6 +12,7 @@ module PlutusCore.Assembler.Shrink
   ,safeTactics
   ,size
   ,stepShrink
+  ,shrinkTerm
               )where
 
 
@@ -63,7 +64,7 @@ runShrink :: ShrinkParams -> Term -> Term
 runShrink sp = runShrink' (extraSteps sp) sp . return
 
 runShrink' :: Integer -> ShrinkParams -> [Term] -> Term
-runShrink' es sp terms 
+runShrink' es sp terms
   | size (head terms) > size (head terms') = runShrink' (extraSteps sp) sp terms'
   | es > 0                                 = runShrink' (es -1)         sp terms'
   | otherwise                              = head terms

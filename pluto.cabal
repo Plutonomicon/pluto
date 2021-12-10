@@ -134,6 +134,7 @@ test-suite spec
     attoparsec,
     bytestring,
     containers,
+    directory,
     either,
     exceptions,
     extra,

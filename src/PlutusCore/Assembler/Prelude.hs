@@ -47,13 +47,13 @@ import           Prelude              (Bool (False, True), Bounded, Char,
                                        Maybe (Just, Nothing),
                                        Monad (return, (>>=)), MonadFail (fail),
                                        Monoid (mempty), Num ((*), (+), (-)),
-                                       Ord, Real, Show (show), String, all,
+                                       Ord, Real, Show (show), String, abs, all,
                                        const, curry, drop, flip, foldl,
                                        fromIntegral, fst, head, id, mconcat,
-                                       min, negate, not, readFile, reverse, snd,
-                                       take, otherwise, ($), (&&), (++), (.), (/=), 
-                                       (<$), (<$>), (<), (<=), (<>), (=<<), (==), (>),
-                                       (>=), (>>), (||))
+                                       min, negate, not, otherwise, readFile,
+                                       reverse, snd, take, ($), (&&), (++), (.),
+                                       (/=), (<$), (<$>), (<), (<=), (<>),
+                                       (=<<), (==), (>), (>=), (>>), (||))
 
 (<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
 f <$$> x = fmap (fmap f) x

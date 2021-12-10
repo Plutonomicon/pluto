@@ -1,0 +1,12 @@
+-- Apply
+--   ()
+--   (LamAbs
+--      ()
+--      DeBruijn { dbnIndex = 0 }
+--      (LamAbs
+--         ()
+--         DeBruijn { dbnIndex = 0 }
+--         (Constant () (Some (ValueOf unit ())))))
+--   (Constant () (Some (ValueOf unit ())))
+
+((\a -> (\b -> ())) ())
