@@ -262,6 +262,16 @@ To only assemble the Pluto program into a Plutus bytecode:
 cabal run pluto -- assemble examples/hello.pluto
 ```
 
+#### Sample Contract
+
+See `examples/contracts/sample` for the sample "gift" contract, written in both Haskell and Pluto. This example includes QuickCheck ContractModel tests to test the contract using both Haskell and Pluto version. In future, this contract will expanded to operate on ScriptContext types.
+
+To run the sample contract tests,
+
+```
+cabal run pluto-sample-contract
+```
+
 ### Haskell FFI 
 
 Pluto programs can be accessed and evaluated (via Plutus Core) from Haskell code as follows:

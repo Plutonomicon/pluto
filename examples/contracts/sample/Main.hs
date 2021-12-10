@@ -1,24 +1,25 @@
 {-# LANGUAGE DataKinds          #-}
-{-# LANGUAGE RankNTypes         #-}
-{-# LANGUAGE TemplateHaskell    #-}
-{-# LANGUAGE TypeApplications   #-}
-{-# LANGUAGE TypeFamilies       #-}
-{-# LANGUAGE TypeOperators      #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:defer-errors #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances  #-}
 {-# LANGUAGE GADTs              #-}
 {-# LANGUAGE InstanceSigs       #-}
 {-# LANGUAGE LambdaCase         #-}
+{-# LANGUAGE RankNTypes         #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TemplateHaskell    #-}
+{-# LANGUAGE TypeApplications   #-}
+{-# LANGUAGE TypeFamilies       #-}
+{-# LANGUAGE TypeOperators      #-}
 {-# LANGUAGE ViewPatterns       #-}
+
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:defer-errors #-}
 module Main where
 
 import qualified Control.Applicative                as App
-import           Control.Lens.Combinators
-import           Control.Lens.Operators
-import           Control.Lens.TH
-import           Control.Monad                      hiding (fmap)
+import           Control.Lens.Combinators           (makeLenses, view)
+import           Control.Lens.Operators             ((^.))
+import           Control.Lens.TH                    (makeLenses)
+import           Control.Monad                      (forever, void)
 import qualified Control.Monad.Freer.Extras         as Extras
 import           Data.Map                           as Map
 import qualified Data.Map.Strict                    as Map
@@ -27,7 +28,7 @@ import           Data.Void                          (Void)
 import qualified Hedgehog                           as H
 import qualified Hedgehog.Main                      as H
 import           Ledger                             hiding (singleton)
-import           Ledger.Ada                         as Ada
+import           Ledger.Ada                         as Ada (lovelaceValueOf)
 import           Ledger.Constraints                 as Constraints
 import qualified Ledger.Scripts                     as Scripts
 import           Plutus.Contract
@@ -53,7 +54,7 @@ import qualified Test.Tasty                         as T
 import qualified Test.Tasty.Hedgehog                as H
 import qualified Test.Tasty.QuickCheck              as QC
 import           Text.Printf                        (printf)
-import           Wallet.Emulator.Wallet
+import           Wallet.Emulator.Wallet             (Wallet, knownWallets)
 
 -- -------------------------------------------------------------------------- --
 -- Onchain (Pluto)                                                            --
@@ -65,7 +66,7 @@ plutoValidatorProg = $(PlutoFFI.load "examples/contracts/sample/validator.pluto"
 plutoValidator :: Validator
 plutoValidator =
   case Pluto.translate plutoValidatorProg of
-    -- TODO: fail in TH
+    -- TODO: fail in TH instead of at (offchain) runtime
     Left err     -> Prelude.error $ Prelude.show err
     Right script -> Validator script
 
@@ -85,7 +86,7 @@ mkValidator :: BuiltinData -> BuiltinData -> BuiltinData -> ()
 mkValidator
   (PlutusTx.unsafeFromBuiltinData -> correctGuess)
   (PlutusTx.unsafeFromBuiltinData -> guess)
-  _ =
+  _scriptCtx =
     if (guess :: Guess) == correctGuess
     then ()
     else error ()
