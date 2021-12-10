@@ -1,1 +1,5 @@
-(\_ _ _ -> ())
+(\datum redeemer _ -> 
+  if UnIData datum `EqualsInteger` UnIData redeemer 
+    then () 
+    else Error ()
+)
