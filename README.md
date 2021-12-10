@@ -217,15 +217,30 @@ Currently, you must do all of these steps manually, or run the `manual-ci` funct
 
 ### Examples
 
+#### `run`
+
 To run the HelloWorld example,
 
 ```
-cabal run pluto -- -v run examples/hello.pluto
+cabal run pluto -- run examples/hello.pluto 0x$(echo -n "Charles" | od -A n -t x1 | sed 's/ *//g') -v
 ```
 
-(The `-v` option dumps intermediate ASTs)
+Note here that:
 
-To evaluate a top-level binding with (optional) arguments. For example, this command evalutes the `greet` function from `hello.pluto` by applying it with the two given arguments.
+- The `-v` option dumps intermediate ASTs. Ignore it, to display only the script out.
+- We pass a bytestring to the script, as a Pluto literal (which represents bytestrings beginning with `0x`). In general any Plutus `Data` value is accepted.
+
+The echo example can be used to view the Plutus `Data` representation of a given Pluto value, for example:
+
+```
+$ cabal run pluto -- run examples/echo.pluto '{ 2 = 43 }'
+Constant () (Some (ValueOf data (Map [(I 2,I 43)])))
+$
+```
+
+#### `eval`
+
+`eval` can be used to evaluate a top-level binding with (optional) arguments that represented as a Pluto expression. For example, this command evalutes the `greet` function from `hello.pluto` by applying it with the two given arguments.
 
 ```
 cabal run pluto -- eval examples/hello.pluto greet '"Bonjour"' '"Charles"'
@@ -236,6 +251,10 @@ Top-level variables can also be accessed by ignoring the arguments:
 ```
 cabal run pluto -- eval examples/hello.pluto defaultGreeting
 ```
+
+Note the distinction between `run` and `eval` *in regards to the type of the arguments*.  `run` expects a Plutus `Data` value; `eval` expects a Pluto expression.
+
+#### `assemble`
 
 To only assemble the Pluto program into a Plutus bytecode:
 

@@ -5,4 +5,7 @@ let
     (greeting +s ", ") +s name
   )
 in 
-  greet defaultGreeting "world"
+  -- The argument is a Plutus Data value
+  (\nameData -> 
+    greet defaultGreeting (DecodeUtf8 (UnBData nameData))
+  )

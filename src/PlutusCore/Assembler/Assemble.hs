@@ -1,7 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 
-module PlutusCore.Assembler.Assemble (assemble, translate, parseProgram) where
+module PlutusCore.Assembler.Assemble (assemble, translate, parseProgram, parsePlutusData) where
 
 
 import           Codec.Serialise                         (serialise)
@@ -10,12 +10,13 @@ import           Plutus.V1.Ledger.Scripts                (Script (..))
 
 import           PlutusCore.Assembler.AnnDeBruijn        (annDeBruijn)
 import           PlutusCore.Assembler.Desugar            (desugar)
-import           PlutusCore.Assembler.Parse              (parse)
+import           PlutusCore.Assembler.Parse              (parse, parseData)
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Shrink             (shrinkScript)
 import           PlutusCore.Assembler.Tokenize           (tokenize)
 import           PlutusCore.Assembler.Types.AST          (Program)
 import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage)
+import qualified PlutusCore.Data                         as PLC
 import           Text.Parsec.Pos                         (SourceName, SourcePos)
 
 
@@ -32,3 +33,7 @@ translate = fmap (shrinkScript . Script) . (desugar . annDeBruijn)
 parseProgram :: SourceName -> Text -> Either ErrorMessage (Program SourcePos)
 parseProgram name =
   parse name <=< tokenize name
+
+parsePlutusData :: SourceName -> Text -> Either ErrorMessage PLC.Data
+parsePlutusData name =
+  parseData name <=< tokenize name
