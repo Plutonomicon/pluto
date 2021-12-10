@@ -2,7 +2,9 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module PlutusCore.Assembler.Shrink
-  (shrinkProgram -- all exports besides shrinkProgram are exported for testing
+  (shrinkScript
+  ,shrinkProgram 
+  -- most of these exports are intended for testing
   ,Program
   ,Tactic
   ,SafeTactic
@@ -53,6 +55,9 @@ data ShrinkParams = ShrinkParams
 -- property test
 
 data WhnfRes = Err | Unclear  | Safe deriving (Eq,Ord)
+
+shrinkScript :: Script -> Script
+shrinkScript (Script prog) = Script (shrinkProgram prog)
 
 shrinkProgram :: Program -> Program
 shrinkProgram (UPLC.Program ann version term) = UPLC.Program ann version (shrinkTerm term)
