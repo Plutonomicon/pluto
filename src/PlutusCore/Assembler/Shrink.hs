@@ -2,8 +2,9 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module PlutusCore.Assembler.Shrink
-  (shrinkScript
-  ,shrinkProgram 
+  (shrinkCompiled
+  ,shrinkScript
+  ,shrinkProgram
   -- most of these exports are intended for testing
   ,Program
   ,Tactic
@@ -18,12 +19,19 @@ module PlutusCore.Assembler.Shrink
               )where
 
 
+import           Codec.Serialise
 import           Control.Monad.Reader
+import           Data.ByteString.Lazy         (toStrict)
 import           Data.List                    (sortOn)
-import           Plutus.V1.Ledger.Scripts     (Script (..), scriptSize)
+import           Plutus.V1.Ledger.Scripts     (Script (..), fromCompiledCode,
+                                               scriptSize)
 import           PlutusCore.Assembler.Prelude
-import           PlutusCore.DeBruijn          (DeBruijn (..), Index (..))
+import           PlutusCore.DeBruijn          (DeBruijn (..), Index (..),
+                                               fakeNameDeBruijn)
 import           PlutusCore.Default           (DefaultFun (..), DefaultUni)
+import           PlutusTx.Code                (CompiledCode,
+                                               CompiledCodeIn (..))
+import           UntypedPlutusCore            (programMapNames)
 import qualified UntypedPlutusCore.Core.Type  as UPLC
 
 
@@ -55,6 +63,16 @@ data ShrinkParams = ShrinkParams
 -- property test
 
 data WhnfRes = Err | Unclear  | Safe deriving (Eq,Ord)
+
+shrinkCompiled :: CompiledCode a -> CompiledCode a
+shrinkCompiled comped = let
+  asScript = fromCompiledCode comped
+  script@(Script prog') = shrinkScript asScript
+  prog = programMapNames fakeNameDeBruijn prog'
+  scriptBc = toStrict $ serialise script
+    in case comped of
+         SerializedCode   _ maybePirByteString a -> SerializedCode   scriptBc maybePirByteString  a
+         DeserializedCode _ maybePir           a -> DeserializedCode prog     maybePir            a
 
 shrinkScript :: Script -> Script
 shrinkScript (Script prog) = Script (shrinkProgram prog)

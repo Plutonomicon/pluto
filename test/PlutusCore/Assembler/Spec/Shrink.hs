@@ -8,11 +8,12 @@
 
 module PlutusCore.Assembler.Spec.Shrink ( tests , prettyPrintTerm) where
 
-import           Control.Monad                            (mapM, filterM, (>=>))
+import           Control.Monad                            (filterM, mapM, (>=>))
 import           Data.Either                              (rights)
-import           Data.List                                (lookup,zip)
+import           Data.List                                (lookup, zip)
 import           Data.Maybe                               (fromJust)
-import           System.Directory                         (listDirectory,doesFileExist)
+import           System.Directory                         (doesFileExist,
+                                                           listDirectory)
 import           System.FilePath                          ((</>))
 
 import           Plutus.V1.Ledger.Scripts                 (Script (..))
@@ -21,11 +22,11 @@ import qualified PlutusCore                               as PLC
 import           PlutusCore.Assembler.Assemble            (parseProgram,
                                                            translate)
 import           PlutusCore.Assembler.Prelude
-import           PlutusCore.Assembler.Shrink              (SafeTactic,
-                                                           Tactic, Term,
+import           PlutusCore.Assembler.Shrink              (SafeTactic, Tactic,
+                                                           Term,
                                                            defaultShrinkParams,
-                                                           safeTactics,
-                                                           size, tactics)
+                                                           safeTactics, size,
+                                                           tactics)
 import           PlutusCore.Assembler.Spec.Gen            (genUplc)
 import           PlutusCore.Assembler.Spec.Prelude
 import           PlutusCore.Default                       (DefaultFun,
@@ -57,7 +58,7 @@ tests =
      [ testGroup tactName [ testSafeTactic tactName tact , testSafeTacticShrinks tact ]
      | (tactName,tact) <- safeTactics defaultShrinkParams ] ++
      [ testGroup tactName [ testTactic     tactName tact ]
-     | (tactName,tact) <- tactics     defaultShrinkParams ] 
+     | (tactName,tact) <- tactics     defaultShrinkParams ]
                                 )
 
 data TacticType = Safe | Unsafe deriving Show
