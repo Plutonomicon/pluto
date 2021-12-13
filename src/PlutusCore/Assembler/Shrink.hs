@@ -3,6 +3,8 @@
 
 module PlutusCore.Assembler.Shrink
   (shrinkCompiled
+  ,shrinkCompiledSp
+  ,withoutTactics
   ,shrinkScript
   ,shrinkProgram
   -- most of these exports are intended for testing
@@ -22,7 +24,7 @@ module PlutusCore.Assembler.Shrink
 import           Codec.Serialise
 import           Control.Monad.Reader
 import           Data.ByteString.Lazy         (toStrict)
-import           Data.List                    (sortOn)
+import           Data.List                    (sortOn,filter,notElem)
 import           Plutus.V1.Ledger.Scripts     (Script (..), fromCompiledCode,
                                                scriptSize)
 import           PlutusCore.Assembler.Prelude
@@ -64,10 +66,19 @@ data ShrinkParams = ShrinkParams
 
 data WhnfRes = Err | Unclear  | Safe deriving (Eq,Ord)
 
+withoutTactics :: [String] -> ShrinkParams
+withoutTactics ts = defaultShrinkParams
+  { safeTactics = filter (\(tn,_) -> tn `notElem` ts) (safeTactics defaultShrinkParams)
+  , tactics     = filter (\(tn,_) -> tn `notElem` ts) (tactics     defaultShrinkParams)
+  }
+
 shrinkCompiled :: CompiledCode a -> CompiledCode a
-shrinkCompiled comped = let
+shrinkCompiled = shrinkCompiledSp defaultShrinkParams
+
+shrinkCompiledSp :: ShrinkParams -> CompiledCode a -> CompiledCode a
+shrinkCompiledSp sp comped = let
   asScript = fromCompiledCode comped
-  script@(Script prog') = shrinkScript asScript
+  script@(Script prog') = shrinkScriptSp sp asScript
   prog = programMapNames fakeNameDeBruijn prog'
   scriptBc = toStrict $ serialise script
     in case comped of
@@ -75,21 +86,27 @@ shrinkCompiled comped = let
          DeserializedCode _ maybePir           a -> DeserializedCode prog     maybePir            a
 
 shrinkScript :: Script -> Script
-shrinkScript (Script prog) = Script (shrinkProgram prog)
+shrinkScript = shrinkScriptSp defaultShrinkParams
+
+shrinkScriptSp :: ShrinkParams -> Script -> Script
+shrinkScriptSp sp (Script prog) = Script (shrinkProgramSp sp prog)
 
 shrinkProgram :: Program -> Program
-shrinkProgram (UPLC.Program ann version term) = UPLC.Program ann version (shrinkTerm term)
+shrinkProgram = shrinkProgramSp defaultShrinkParams
+
+shrinkProgramSp :: ShrinkParams -> Program -> Program
+shrinkProgramSp sp (UPLC.Program ann version term) = UPLC.Program ann version (shrinkTermSp sp term)
 
 shrinkTerm :: Term -> Term
-shrinkTerm = runShrink defaultShrinkParams
+shrinkTerm = shrinkTermSp defaultShrinkParams
 
-runShrink :: ShrinkParams -> Term -> Term
-runShrink sp = runShrink' (extraSteps sp) sp . return
+shrinkTermSp :: ShrinkParams -> Term -> Term
+shrinkTermSp sp = runShrink (extraSteps sp) sp . return
 
-runShrink' :: Integer -> ShrinkParams -> [Term] -> Term
-runShrink' es sp terms
-  | size (head terms) > size (head terms') = runShrink' (extraSteps sp) sp terms'
-  | es > 0                                 = runShrink' (es -1)         sp terms'
+runShrink :: Integer -> ShrinkParams -> [Term] -> Term
+runShrink es sp terms
+  | size (head terms) > size (head terms') = runShrink (extraSteps sp) sp terms'
+  | es > 0                                 = runShrink (es -1)         sp terms'
   | otherwise                              = head terms
     where
       terms' = stepShrink sp terms
@@ -169,7 +186,7 @@ incDeBruijns = incDeBruijns' 1
 incDeBruijns' :: Index -> Term -> Term
 incDeBruijns' level = completeRec $ \case
   UPLC.Var ann name -> Just $ UPLC.Var ann (incAbove level name)
-  UPLC.LamAbs ann name term -> Just $ UPLC.LamAbs ann name (decDeBruijns' (level + 1) term)
+  UPLC.LamAbs ann name term -> Just $ UPLC.LamAbs ann name (incDeBruijns' (level + 1) term)
   _                 -> Nothing
 
 decAbove :: Index -> DeBruijn -> DeBruijn

@@ -20,6 +20,7 @@ library
     PlutusCore.Assembler.Parse
     PlutusCore.Assembler.Prelude
     PlutusCore.Assembler.Shrink
+    PlutusCore.Assembler.ShrinkTH
     PlutusCore.Assembler.Tokenize
     PlutusCore.Assembler.Haskell
     PlutusCore.Assembler.Types.AST
