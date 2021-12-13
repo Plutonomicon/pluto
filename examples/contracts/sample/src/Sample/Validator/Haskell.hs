@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE ViewPatterns      #-}
 
@@ -8,6 +8,8 @@
 module Sample.Validator.Haskell (haskellValidator) where
 
 import           Ledger           (Validator, mkValidatorScript)
+import           Ledger.Contexts  (ScriptContext (scriptContextTxInfo),
+                                   txSignedBy)
 import qualified PlutusTx
 import           PlutusTx.Prelude
 
@@ -16,20 +18,13 @@ import           PlutusTx.Prelude
 -- Onchain (Haskell)                                                          --
 -- -------------------------------------------------------------------------- --
 
--- | The number the gift receiver must guess to redeem the gift.
---
--- Note: This is purposefully insecure, because we are writing a validator that
--- does not operate on ScriptContext, yet. Later, once we get ScriptContext
--- access working in Pluto, we will change this.
-type Guess = Integer
-
 {-# INLINABLE mkValidator #-}
 mkValidator :: BuiltinData -> BuiltinData -> BuiltinData -> ()
 mkValidator
-  (PlutusTx.unsafeFromBuiltinData -> correctGuess)
-  (PlutusTx.unsafeFromBuiltinData -> guess)
-  _scriptCtx =
-    if traceIfFalse "no match" $ (guess :: Guess) == correctGuess
+  (PlutusTx.unsafeFromBuiltinData -> pkh)
+  _
+  (PlutusTx.unsafeFromBuiltinData -> ctx) =
+    if traceIfFalse "beneficiary's signature missing" (scriptContextTxInfo ctx `txSignedBy` pkh)
     then ()
     else error ()
 

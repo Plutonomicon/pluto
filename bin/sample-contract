@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -xe
+
+ghcid -c 'cabal repl pluto-sample-contract' -T :main \
+    --reload=examples/contracts/sample \
+    --restart=examples/contracts/sample/validator.pluto

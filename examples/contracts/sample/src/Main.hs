@@ -39,9 +39,10 @@ import           Wallet.Emulator.Wallet             (Wallet, knownWallets)
 -- Tests                                                                      --
 -- -------------------------------------------------------------------------- --
 
-type Guess = Integer
-
-newtype SampleModel = SampleModel { _giftAmount :: Integer }
+data SampleModel = SampleModel
+  { _giftAmount      :: Integer
+  , _giftBeneficiary :: Maybe Wallet
+  }
   deriving stock (Prelude.Eq, Prelude.Show)
 
 makeLenses ''SampleModel
@@ -49,11 +50,8 @@ makeLenses ''SampleModel
 genWallet :: QC.Gen Wallet
 genWallet = QC.elements knownWallets
 
-testGuess :: Guess
-testGuess = 42
-
 instance PCT.ContractModel SampleModel where
-  data Action SampleModel = Give Wallet Guess Integer | Grab Wallet Guess
+  data Action SampleModel = Give Wallet Wallet Integer | Grab Wallet
     deriving stock (Prelude.Show, Prelude.Eq)
 
   data ContractInstanceKey SampleModel _ _ _ where
@@ -62,28 +60,32 @@ instance PCT.ContractModel SampleModel where
   arbitraryAction :: PCT.ModelState SampleModel -> QC.Gen (PCT.Action SampleModel)
   arbitraryAction _ = do
     wallet <- genWallet
+    beneficiary <- genWallet
     let
       minAda = 2
       val = (1000000 *) Prelude.<$> QC.choose @Integer (minAda, 5)
     QC.oneof [
-      Prelude.fmap (Give wallet testGuess) val,
-      Prelude.pure $ Grab wallet testGuess
+      Prelude.fmap (Give wallet beneficiary) val,
+      Prelude.pure $ Grab wallet
       ]
 
   initialState :: SampleModel
-  initialState = SampleModel 0
+  initialState = SampleModel 0 Nothing
 
   precondition :: PCT.ModelState SampleModel -> PCT.Action SampleModel -> Bool
-  precondition s (Give _w _ _) = s ^. PCT.contractState . giftAmount Prelude.>= 0
-  precondition s (Grab _w _g)   = s ^. PCT.contractState . giftAmount Prelude.>= 0
+  precondition s (Give _w giftee _) =
+    s ^. PCT.contractState . giftBeneficiary Prelude.== Just giftee
+  precondition s (Grab _w)   =
+    s ^. PCT.contractState . giftAmount Prelude.>= 0
 
   nextState :: PCT.Action SampleModel -> PCT.Spec SampleModel ()
   nextState = \case
-    Give w _g v -> do
+    Give w giftee v -> do
       PCT.withdraw w (lovelaceValueOf v)
       giftAmount PCT.$~ (Prelude.+ v)
+      giftBeneficiary PCT.$= Just giftee
       PCT.wait 1
-    Grab w _ -> do
+    Grab w -> do
       v <- PCT.askContractState (view giftAmount)
       PCT.deposit w (lovelaceValueOf v)
       giftAmount PCT.$= 0
@@ -91,11 +93,12 @@ instance PCT.ContractModel SampleModel where
 
   perform :: PCT.HandleFun SampleModel -> PCT.ModelState SampleModel -> PCT.Action SampleModel -> EmulatorTrace ()
   perform h _ = \case
-    Give w g n -> do
-      Em.callEndpoint @"give" (h $ UseContract w) (g, n)
+    Give w giftee n -> do
+      let pkh = PCT.walletPubKeyHash giftee
+      Em.callEndpoint @"give" (h $ UseContract w) (pkh, n)
       void $ Em.waitNSlots 1
-    Grab w g -> do
-      Em.callEndpoint @"grab" (h $ UseContract w) g
+    Grab w -> do
+      Em.callEndpoint @"grab" (h $ UseContract w) ()
       void $ Em.waitNSlots 1
 
 deriving stock instance Prelude.Show (PCT.ContractInstanceKey SampleModel w s e)
@@ -114,7 +117,10 @@ modelCheck vl = QC.withMaxSuccess 10 . PCT.propRunActionsWithOptions
 noFundsLocked :: Validator -> QC.Property
 noFundsLocked vl =
     QC.withMaxSuccess 10
-      $ PCT.checkNoLockedFundsProof PCT.defaultCheckOptions (instanceSpec vl) (PCT.NoLockedFundsProof (PCT.action $ Grab w1 testGuess) (PCT.action . flip Grab testGuess))
+      $ PCT.checkNoLockedFundsProof
+        PCT.defaultCheckOptions
+        (instanceSpec vl)
+        (PCT.NoLockedFundsProof (PCT.action $ Grab w1) (PCT.action . Grab))
 
 
 smokeTrace :: Validator -> EmulatorTrace ()
@@ -123,11 +129,12 @@ smokeTrace validator = do
   h1 <- Em.activateContractWallet w1 ep
   h2 <- Em.activateContractWallet w2 ep
   h3 <- Em.activateContractWallet w3 ep
-  Em.callEndpoint @"give" h1 (42, 10*1000000)
+  Extras.logInfo $ "Beneficiary: " <> show w3
+  Em.callEndpoint @"give" h1 (PCT.walletPubKeyHash w3, 10*1000000)
   void $ Em.waitUntilSlot 1
-  Em.callEndpoint @"grab" h2 24 -- Incorrect guess
+  Em.callEndpoint @"grab" h2 () -- Not a benefiary
   _s <- Em.waitNSlots 1
-  Em.callEndpoint @"grab" h3 42
+  Em.callEndpoint @"grab" h3 ()
   _s <- Em.waitNSlots 1
   Extras.logInfo "done"
 
@@ -143,6 +150,6 @@ tests = do
           ]
 
 main :: IO ()
-main =
+main = do
   Em.runEmulatorTraceIO $ smokeTrace plutoValidator
-  -- tests
+  tests

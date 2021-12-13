@@ -6,6 +6,10 @@ license-files: LICENSE
 author:        Ardana Labs
 maintainer:    morgan.thomas@platonic.systems
 
+data-files:
+  examples/**/*.pluto
+extra-source-files:
+  examples/contract/sample/validator.pluto
 
 library
   exposed-modules:
