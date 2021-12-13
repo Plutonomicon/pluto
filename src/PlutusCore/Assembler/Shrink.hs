@@ -36,6 +36,7 @@ import           PlutusTx.Code                (CompiledCode,
 import           UntypedPlutusCore            (programMapNames)
 import qualified UntypedPlutusCore.Core.Type  as UPLC
 
+import Debug.Trace 
 
 type Term    = UPLC.Term    DeBruijn DefaultUni DefaultFun ()
 type Program = UPLC.Program DeBruijn DefaultUni DefaultFun ()
@@ -105,10 +106,12 @@ shrinkTermSp sp = runShrink (extraSteps sp) sp . return
 
 runShrink :: Integer -> ShrinkParams -> [Term] -> Term
 runShrink es sp terms
-  | size (head terms) > size (head terms') = runShrink (extraSteps sp) sp terms'
-  | es > 0                                 = runShrink (es -1)         sp terms'
-  | otherwise                              = head terms
+  | sizeNow > sizeLast  = trace ("shrank to" ++ show sizeNow)     $ runShrink (extraSteps sp) sp terms'
+  | es > 0              = trace ("trying again" ++ show sizeNow ) $ runShrink (es -1)         sp terms'
+  | otherwise           = head terms
     where
+      sizeNow  = size $ head terms
+      sizeLast = size $ head terms'
       terms' = stepShrink sp terms
 
 stepShrink :: ShrinkParams -> [Term] -> [Term]
