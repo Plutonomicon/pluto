@@ -1,5 +1,11 @@
-(\datum redeemer _ -> 
-  if UnIData datum `EqualsInteger` UnIData redeemer 
-    then () 
-    else Error ()
-)
+let 
+  -- Tracing.
+  trace = (\s a -> ! Trace s a);
+  traceIfTrue = (\s a -> if a then ! Trace s a else a);
+  traceIfFalse = (\s a -> if a then a else ! Trace s a)
+in 
+  (\datum redeemer _ -> 
+    if "no match" `traceIfFalse` (UnIData datum `EqualsInteger` UnIData redeemer)
+      then () 
+      else Error ()
+  )

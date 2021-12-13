@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE ViewPatterns      #-}
@@ -28,7 +29,7 @@ mkValidator
   (PlutusTx.unsafeFromBuiltinData -> correctGuess)
   (PlutusTx.unsafeFromBuiltinData -> guess)
   _scriptCtx =
-    if (guess :: Guess) == correctGuess
+    if traceIfFalse "no match" $ (guess :: Guess) == correctGuess
     then ()
     else error ()
 

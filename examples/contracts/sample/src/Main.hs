@@ -117,9 +117,9 @@ noFundsLocked vl =
       $ PCT.checkNoLockedFundsProof PCT.defaultCheckOptions (instanceSpec vl) (PCT.NoLockedFundsProof (PCT.action $ Grab w1 testGuess) (PCT.action . flip Grab testGuess))
 
 
-smokeTrace :: EmulatorTrace ()
-smokeTrace = do
-  let ep = endpoints haskellValidator
+smokeTrace :: Validator -> EmulatorTrace ()
+smokeTrace validator = do
+  let ep = endpoints validator
   h1 <- Em.activateContractWallet w1 ep
   h2 <- Em.activateContractWallet w2 ep
   h3 <- Em.activateContractWallet w3 ep
@@ -144,5 +144,5 @@ tests = do
 
 main :: IO ()
 main =
-  Em.runEmulatorTraceIO smokeTrace
+  Em.runEmulatorTraceIO $ smokeTrace plutoValidator
   -- tests
