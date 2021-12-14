@@ -1,5 +1,17 @@
 # `pluto`
 
+[![Hercules-ci][Herc badge]][Herc link]
+[![Cachix Cache][Cachix badge]][Cachix link]
+[![Built with Nix][Built with Nix badge]][Built with Nix link]
+
+[Herc badge]: https://img.shields.io/badge/ci--by--hercules-green.svg
+[Herc link]: https://hercules-ci.com/github/Plutonomicon/pluto 
+[Cachix badge]: https://img.shields.io/badge/cachix-plutonomicon--pluto-blue.svg
+[Cachix link]: https://plutonomicon-pluto.cachix.org
+[Built with Nix badge]: https://builtwithnix.org/badge.svg
+[Built with Nix link]: https://builtwithnix.org
+
+
 ## The Plutus Core assembler
 
 `pluto` is a programming language which is essentially [Untyped Plutus Core](https://iohk.io/en/blog/posts/2021/02/02/plutus-tx-compiling-haskell-into-plutus-core/) (UPLC) with a little bit of syntactic sugar. `pluto` is written in a Haskell-like human-friendly syntax. UPLC is an untyped lambda calculus with strict evaluation semantics.
