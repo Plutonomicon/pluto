@@ -1,8 +1,10 @@
 -- Hello world
 let 
+  trace = (\s x -> ! Trace s x);
   defaultGreeting = "Hello";
   greet = (\greeting name -> 
-    (greeting +s ", ") +s name
+    (greeting +s ", ") 
+      +s (trace ("Name is: " `AppendString` name) name)
   )
 in 
   -- The argument is a Plutus Data value

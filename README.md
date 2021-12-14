@@ -264,7 +264,7 @@ cabal run pluto -- assemble examples/hello.pluto
 
 #### Sample Contract
 
-See `examples/contracts/sample` for the sample "gift" contract, written in both Haskell and Pluto. This example includes QuickCheck ContractModel tests to test the contract using both Haskell and Pluto version. In future, this contract will expanded to operate on ScriptContext types.
+See `examples/contracts/sample` for the sample "gift" contract, written in both Haskell and Pluto. This example includes QuickCheck ContractModel tests to test the contract using both Haskell and Pluto version. It demonstrates how to unpack `ScriptContext` in Pluto.
 
 To run the sample contract tests,
 
