@@ -1,8 +1,8 @@
-{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE NoImplicitPrelude   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE BangPatterns #-}
 
 module PlutusCore.Assembler.Shrink
   (shrinkCompiled
@@ -27,29 +27,34 @@ module PlutusCore.Assembler.Shrink
 
 
 import           Codec.Serialise
+import           Control.Monad                (replicateM, sequence)
+import           Control.Monad.Reader         (MonadReader, ReaderT, local,
+                                               runReaderT)
+import           Control.Monad.State          (State, StateT, evalStateT, get,
+                                               modify)
 import           Data.ByteString.Lazy         (toStrict)
-import Data.Function (on)
-import Data.Functor ((<&>))
-import Data.Functor.Identity (runIdentity)
-import           Data.List                    (sortOn,filter,notElem,group,groupBy,maximum)
+import           Data.Function                (on)
+import           Data.Functor                 ((<&>))
+import           Data.Functor.Identity        (runIdentity)
+import           Data.List                    (filter, group, groupBy, maximum,
+                                               notElem, sortOn)
+import           Data.Maybe                   (fromMaybe)
 import           Data.Set                     (Set)
 import qualified Data.Set                     as S
 import           Data.Text                    (pack)
-import Data.Maybe (fromMaybe)
-import           Control.Monad                (sequence,replicateM)
-import Control.Monad.State                   (StateT,State,evalStateT,get,modify)
-import           Control.Monad.Reader         (ReaderT,MonadReader,runReaderT,local)
 import           Plutus.V1.Ledger.Scripts     (Script (..), fromCompiledCode,
                                                scriptSize)
-import           PlutusCore                   (FreeVariableError,runQuoteT)
+import           PlutusCore                   (FreeVariableError, runQuoteT)
 import           PlutusCore.Assembler.Prelude
-import           PlutusCore.DeBruijn          (DeBruijn (..), 
-                                               fakeNameDeBruijn)
+import           PlutusCore.DeBruijn          (DeBruijn (..), fakeNameDeBruijn)
 import           PlutusCore.Default           (DefaultFun (..), DefaultUni)
 import           PlutusTx.Code                (CompiledCode,
                                                CompiledCodeIn (..))
-import           UntypedPlutusCore            (Name(..),Unique(..),Version(..),termMapNames,programMapNames,unDeBruijnTerm,deBruijnTerm,unNameDeBruijn)
-import           UntypedPlutusCore.Core.Type  (Term(..),Program(..))
+import           UntypedPlutusCore            (Name (..), Unique (..),
+                                               Version (..), deBruijnTerm,
+                                               programMapNames, termMapNames,
+                                               unDeBruijnTerm, unNameDeBruijn)
+import           UntypedPlutusCore.Core.Type  (Program (..), Term (..))
 
 type DTerm    = Term    DeBruijn DefaultUni DefaultFun ()
 type NTerm    = Term    Name     DefaultUni DefaultFun ()
@@ -97,12 +102,12 @@ runScopeM nt = runIdentity . runScopeMT nt
 
 usedScope :: NTerm -> Scope
 usedScope = \case
-  Var _ n -> S.singleton n
+  Var _ n      -> S.singleton n
   LamAbs _ n t -> S.insert n (usedScope t)
-  Force _ t -> usedScope t
-  Delay _ t -> usedScope t
-  Apply _ f x -> S.union (usedScope f) (usedScope x)
-  _ -> S.empty
+  Force _ t    -> usedScope t
+  Delay _ t    -> usedScope t
+  Apply _ f x  -> S.union (usedScope f) (usedScope x)
+  _            -> S.empty
 
 runScopedTact :: (NTerm -> ScopeM a) -> NTerm -> a
 runScopedTact f nt = runScopeM nt (f nt)
@@ -139,15 +144,15 @@ shrinkProgramSp :: ShrinkParams -> DProgram -> DProgram
 shrinkProgramSp sp (Program _ version term) = Program () version (shrinkDTermSp sp term)
 
 nTermToD :: NTerm -> DTerm
-nTermToD = termMapNames unNameDeBruijn . (\case 
+nTermToD = termMapNames unNameDeBruijn . (\case
   Right t -> t
-  Left s -> error $ "nTermToD failed with" ++ show (s :: FreeVariableError)
-  ) . runQuoteT . deBruijnTerm 
+  Left s  -> error $ "nTermToD failed with" ++ show (s :: FreeVariableError)
+  ) . runQuoteT . deBruijnTerm
 
 dTermToN :: DTerm -> NTerm
-dTermToN = (\case 
+dTermToN = (\case
   Right t -> t
-  Left s -> error $ "dTermToN failed with" ++ show (s :: FreeVariableError)
+  Left s  -> error $ "dTermToN failed with" ++ show (s :: FreeVariableError)
   ) . runQuoteT . unDeBruijnTerm . termMapNames fakeNameDeBruijn
 
 --shrinkDTerm :: DTerm -> DTerm
@@ -164,9 +169,9 @@ shrinkNTermSp sp = runShrink (extraSteps sp) sp . return
 
 runShrink :: Integer -> ShrinkParams -> [NTerm] -> NTerm
 runShrink es sp !terms
-  | size (head terms) > size (head terms') = runShrink (extraSteps sp) sp terms'
-  | es > 0                                 = runShrink (es -1)         sp terms'
-  | otherwise                              = head terms
+  | sizeLast > sizeNow = runShrink (extraSteps sp) sp terms'
+  | es > 0             = runShrink (es -1)         sp terms'
+  | otherwise          = head terms
     where
       sizeNow  = size $ head terms
       sizeLast = size $ head terms'
@@ -250,12 +255,12 @@ appBind name val = completeRec $ \case
 
 mentions :: Name -> NTerm -> Bool
 mentions name = \case
-  Var _ vname -> vname == name
+  Var _ vname         -> vname == name
   LamAbs _ lname term -> lname /= name && mentions name term
   Apply _ f x         -> mentions name f || mentions name x
   Force _ term        -> mentions name term
   Delay _ term        -> mentions name term
-  _                        -> False
+  _                   -> False
 
 whnf :: NTerm -> WhnfRes
 whnf = whnf' 100
@@ -267,11 +272,11 @@ whnf' n = let
     in \case
   Var{} -> Unclear
   LamAbs{} -> Safe
-  Apply _ (LamAbs _ name lTerm) valTerm -> 
+  Apply _ (LamAbs _ name lTerm) valTerm ->
     case rec valTerm of
       Err -> Err
       res -> min res $ rec (appBind name valTerm lTerm)
-  Apply _ (Apply _ (Builtin _ builtin) arg1) arg2 -> 
+  Apply _ (Apply _ (Builtin _ builtin) arg1) arg2 ->
     if safe2Arg builtin
        then min (rec arg1) (rec arg2)
        else min Unclear $ min (rec arg1) (rec arg2)
@@ -316,10 +321,10 @@ subTerms t = (S.empty,t):case t of
                  Apply _ funTerm varTerm -> subTerms funTerm ++ subTerms varTerm
                  Force _ term            -> subTerms term
                  Delay _ term            -> subTerms term
-                 Var{}      -> []
-                 Constant{} -> []
-                 Builtin{}  -> []
-                 Error{}    -> []
+                 Var{}                   -> []
+                 Constant{}              -> []
+                 Builtin{}               -> []
+                 Error{}                 -> []
 
 unsub :: NTerm -> Name -> NTerm -> NTerm
 unsub replacing replaceWith = completeRec $ \case
@@ -329,16 +334,16 @@ unsub replacing replaceWith = completeRec $ \case
 
 equiv :: (Scope,NTerm) -> (Scope,NTerm) -> Bool
 equiv (lscope,lterm) (rscope,rterm)
-     = not (uses lscope lterm) 
-    && not (uses rscope rterm) 
+     = not (uses lscope lterm)
+    && not (uses rscope rterm)
     && lterm == rterm
 
   {-
 -- compares two (scoped) terms and maybe returns a template the number of nodes of the template and the number of holes in the template
 weakEquiv :: (Scope,NTerm) -> (Scope,NTerm) -> Maybe (NTerm,Int,Int)
 weakEquiv (lscope,lterm) (rscope,rterm) = do
-    guard $ not (uses lscope lterm) 
-    guard $ not (uses rscope rterm) 
+    guard $ not (uses lscope lterm)
+    guard $ not (uses rscope rterm)
     weakEquiv' lterm rterm
 
 weakEquiv' :: NTerm -> NTerm -> StateT Int Maybe (NTerm,Int)
@@ -352,7 +357,7 @@ weakEquiv' = curry $ \case
     return (Apply () ft xt,fnodes+xnodes,fholes+xholes)
   (Delay _ l,Delay _ r) -> first3 (Delay ()) <$> weakEquiv' l r
   (Force _ l,Force _ r) -> first3 (Force ()) <$> weakEquiv' l r
-  (l,r) 
+  (l,r)
     | l == r    -> Just (l,0,0)
     | otherwise -> do
       hn <- get
@@ -368,12 +373,12 @@ subName replace replaceWith = completeRec $ \case
 
 uses :: Scope -> NTerm -> Bool
 uses s = \case
-  Apply _ f x -> uses s f || uses s x
-  Delay _ t -> uses s t
-  Force _ t -> uses s t
+  Apply _ f x  -> uses s f || uses s x
+  Delay _ t    -> uses s t
+  Force _ t    -> uses s t
   LamAbs _ n t -> n `S.notMember` s && uses s t
-  Var _ n -> n `S.member` s 
-  _ -> False
+  Var _ n      -> n `S.member` s
+  _            -> False
 
 newName :: ScopeM Name
 newName = do
@@ -387,9 +392,9 @@ subs :: Tactic
 subs = completeTactic $ \case
       Apply _ (LamAbs _ name funTerm) varTerm ->
         case whnf varTerm of
-          Safe -> return $ Just [appBind name varTerm funTerm]
+          Safe    -> return $ Just [appBind name varTerm funTerm]
           Unclear -> return Nothing
-          Err -> return $ Just [Error ()]
+          Err     -> return $ Just [Error ()]
       _ -> return Nothing
 
 unsubs :: Tactic
@@ -402,7 +407,7 @@ unsubs = completeTactic $ \case
           vSubterm <- vSubterms
           guard $ fSubterm `equiv` vSubterm
           return $ do
-            name <- newName 
+            name <- newName
             let funTerm' = unsub (snd fSubterm) name funTerm
                 varTerm' = unsub (snd vSubterm) name varTerm
             return $ Apply ()
@@ -418,8 +423,8 @@ uplcCurry = completeTactic $ \case
   Apply _
     (LamAbs _ name term)
     (Apply _ (Apply _ (Builtin _ MkPairData) pairFst) pairSnd) -> do
-      n1 <- newName 
-      n2 <- newName 
+      n1 <- newName
+      n2 <- newName
       let newTerm =  cleanPairs $ appBind name (Apply () (Apply () (Builtin () MkPairData) (Var () n1)) (Var () n2)) term
       return $ Just [ Apply () (LamAbs () n1 (Apply () (LamAbs () n2 newTerm) pairFst)) pairSnd ]
   _ -> return Nothing

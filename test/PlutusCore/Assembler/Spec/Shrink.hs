@@ -19,15 +19,15 @@ import           System.FilePath                          ((</>))
 import           Plutus.V1.Ledger.Scripts                 (Script (..))
 --import qualified Plutus.V1.Ledger.Scripts                 as Scripts
 import qualified PlutusCore                               as PLC
+import           PlutusCore.Assembler.AnnDeBruijn         (annDeBruijn)
 import           PlutusCore.Assembler.Assemble            (parseProgram)
-import           PlutusCore.Assembler.AnnDeBruijn        (annDeBruijn)
-import           PlutusCore.Assembler.Desugar            (desugar)
+import           PlutusCore.Assembler.Desugar             (desugar)
 import           PlutusCore.Assembler.Prelude
-import           PlutusCore.Assembler.Shrink              (SafeTactic, Tactic,
-                                                           NTerm,
+import           PlutusCore.Assembler.Shrink              (NTerm, SafeTactic,
+                                                           Tactic, dTermToN,
                                                            defaultShrinkParams,
                                                            safeTactics, size,
-                                                           tactics,dTermToN)
+                                                           tactics)
 import           PlutusCore.Assembler.Spec.Gen            (genUplc)
 import           PlutusCore.Assembler.Spec.Prelude
 import           PlutusCore.Default                       (DefaultFun,
@@ -57,7 +57,7 @@ tests =
        | (tactName,tact) <- safeTactics defaultShrinkParams ] ++
      [ testGroup tactName [ testTactic     tactName tact ]
        | (tactName,tact) <- tactics     defaultShrinkParams ] ++
-     [ exampleUnitTests ] 
+     [ exampleUnitTests ]
                                 )
 
 data TacticType = Safe | Unsafe deriving Show
@@ -132,7 +132,7 @@ instance Similar ExMemory where
   a ~= b = 5 * abs (a-b) < abs a+abs b
 
 instance Similar Result where
-  (~=) = curry $ \case 
+  (~=) = curry $ \case
            (Left _,Left _)             -> True
            (Right lValue,Right rValue) -> lValue ~= rValue
            _                           -> False
