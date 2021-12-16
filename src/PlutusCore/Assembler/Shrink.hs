@@ -1,5 +1,8 @@
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE NoImplicitPrelude   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns #-}
 
 module PlutusCore.Assembler.Shrink
   (shrinkCompiled
@@ -11,47 +14,64 @@ module PlutusCore.Assembler.Shrink
   ,Program
   ,Tactic
   ,SafeTactic
-  ,Term
+  ,DTerm
+  ,NTerm
+  ,dTermToN
+  ,nTermToD
   ,defaultShrinkParams
   ,tactics
   ,safeTactics
   ,size
   ,stepShrink
-  ,shrinkTerm
               )where
 
 
 import           Codec.Serialise
-import           Control.Monad.Reader
 import           Data.ByteString.Lazy         (toStrict)
-import           Data.List                    (sortOn,filter,notElem)
+import Data.Function (on)
+import Data.Functor ((<&>))
+import Data.Functor.Identity (runIdentity)
+import           Data.List                    (sortOn,filter,notElem,group,groupBy,maximum)
+import           Data.Set                     (Set)
+import qualified Data.Set                     as S
+import           Data.Text                    (pack)
+import Data.Maybe (fromMaybe)
+import           Control.Monad                (sequence,replicateM)
+import Control.Monad.State                   (StateT,State,evalStateT,get,modify)
+import           Control.Monad.Reader         (ReaderT,MonadReader,runReaderT,local)
 import           Plutus.V1.Ledger.Scripts     (Script (..), fromCompiledCode,
                                                scriptSize)
+import           PlutusCore                   (FreeVariableError,runQuoteT)
 import           PlutusCore.Assembler.Prelude
-import           PlutusCore.DeBruijn          (DeBruijn (..), Index (..),
+import           PlutusCore.DeBruijn          (DeBruijn (..), 
                                                fakeNameDeBruijn)
 import           PlutusCore.Default           (DefaultFun (..), DefaultUni)
 import           PlutusTx.Code                (CompiledCode,
                                                CompiledCodeIn (..))
-import           UntypedPlutusCore            (programMapNames)
-import qualified UntypedPlutusCore.Core.Type  as UPLC
+import           UntypedPlutusCore            (Name(..),Unique(..),Version(..),termMapNames,programMapNames,unDeBruijnTerm,deBruijnTerm,unNameDeBruijn)
+import           UntypedPlutusCore.Core.Type  (Term(..),Program(..))
 
+type DTerm    = Term    DeBruijn DefaultUni DefaultFun ()
+type NTerm    = Term    Name     DefaultUni DefaultFun ()
+type DProgram = Program DeBruijn DefaultUni DefaultFun ()
 
-type Term    = UPLC.Term    DeBruijn DefaultUni DefaultFun ()
-type Program = UPLC.Program DeBruijn DefaultUni DefaultFun ()
+type Scope = Set Name
+type ScopeMT m a = ReaderT (Scope,Scope) (StateT Integer m) a
+type ScopeM    a = ReaderT (Scope,Scope) (State  Integer  ) a
 
-
-type SafeTactic = Term -> Term
+type SafeTactic = NTerm -> NTerm
 -- safe tactics are shortening strategies which
 -- can never be counter productive
-type Tactic = Term -> [Term]
+type Tactic = NTerm -> [NTerm]
 -- tactics are ways of shortening programs
 -- because they can be counter productive
 -- they return a list of terms gotten by
 -- applying the tactic at different points
 -- in the program. The head of the list is
 -- reservered for the original term
-type PartialTactic = Term -> Maybe [Term]
+type PartialTactic = NTerm -> ScopeM (Maybe [NTerm])
+type ScopedTactic  = NTerm -> ScopeM [NTerm]
+--type ScopedSafe    = NTerm -> ScopeM NTerm
 
 data ShrinkParams = ShrinkParams
   { safeTactics     :: [(String,SafeTactic)]
@@ -65,6 +85,27 @@ data ShrinkParams = ShrinkParams
 -- property test
 
 data WhnfRes = Err | Unclear  | Safe deriving (Eq,Ord)
+
+runScopeMT :: Monad m => NTerm -> ScopeMT m a -> m a
+runScopeMT nt smtma = let
+  globalScope = usedScope nt
+  free = fromIntegral$1+maximum (0:(unUnique . nameUnique <$> S.toList globalScope))
+    in evalStateT (runReaderT smtma (globalScope,S.empty)) free
+
+runScopeM :: NTerm -> ScopeM a -> a
+runScopeM nt = runIdentity . runScopeMT nt
+
+usedScope :: NTerm -> Scope
+usedScope = \case
+  Var _ n -> S.singleton n
+  LamAbs _ n t -> S.insert n (usedScope t)
+  Force _ t -> usedScope t
+  Delay _ t -> usedScope t
+  Apply _ f x -> S.union (usedScope f) (usedScope x)
+  _ -> S.empty
+
+runScopedTact :: (NTerm -> ScopeM a) -> NTerm -> a
+runScopedTact f nt = runScopeM nt (f nt)
 
 withoutTactics :: [String] -> ShrinkParams
 withoutTactics ts = defaultShrinkParams
@@ -91,36 +132,60 @@ shrinkScript = shrinkScriptSp defaultShrinkParams
 shrinkScriptSp :: ShrinkParams -> Script -> Script
 shrinkScriptSp sp (Script prog) = Script (shrinkProgramSp sp prog)
 
-shrinkProgram :: Program -> Program
+shrinkProgram :: DProgram -> DProgram
 shrinkProgram = shrinkProgramSp defaultShrinkParams
 
-shrinkProgramSp :: ShrinkParams -> Program -> Program
-shrinkProgramSp sp (UPLC.Program ann version term) = UPLC.Program ann version (shrinkTermSp sp term)
+shrinkProgramSp :: ShrinkParams -> DProgram -> DProgram
+shrinkProgramSp sp (Program _ version term) = Program () version (shrinkDTermSp sp term)
 
-shrinkTerm :: Term -> Term
-shrinkTerm = shrinkTermSp defaultShrinkParams
+nTermToD :: NTerm -> DTerm
+nTermToD = termMapNames unNameDeBruijn . (\case 
+  Right t -> t
+  Left s -> error $ "nTermToD failed with" ++ show (s :: FreeVariableError)
+  ) . runQuoteT . deBruijnTerm 
 
-shrinkTermSp :: ShrinkParams -> Term -> Term
-shrinkTermSp sp = runShrink (extraSteps sp) sp . return
+dTermToN :: DTerm -> NTerm
+dTermToN = (\case 
+  Right t -> t
+  Left s -> error $ "dTermToN failed with" ++ show (s :: FreeVariableError)
+  ) . runQuoteT . unDeBruijnTerm . termMapNames fakeNameDeBruijn
 
-runShrink :: Integer -> ShrinkParams -> [Term] -> Term
-runShrink es sp terms
+--shrinkDTerm :: DTerm -> DTerm
+--shrinkDTerm = shrinkDTermSp defaultShrinkParams
+
+shrinkDTermSp :: ShrinkParams -> DTerm -> DTerm
+shrinkDTermSp sp = nTermToD . shrinkNTermSp sp . dTermToN
+
+--shrinkNTerm :: NTerm -> NTerm
+--shrinkNTerm = shrinkNTermSp defaultShrinkParams
+
+shrinkNTermSp :: ShrinkParams -> NTerm -> NTerm
+shrinkNTermSp sp = runShrink (extraSteps sp) sp . return
+
+runShrink :: Integer -> ShrinkParams -> [NTerm] -> NTerm
+runShrink es sp !terms
   | size (head terms) > size (head terms') = runShrink (extraSteps sp) sp terms'
   | es > 0                                 = runShrink (es -1)         sp terms'
   | otherwise                              = head terms
     where
       terms' = stepShrink sp terms
 
-stepShrink :: ShrinkParams -> [Term] -> [Term]
+stepShrink :: ShrinkParams -> [NTerm] -> [NTerm]
 stepShrink sp terms = let
   terms' = fmap (foldl (.) id (snd <$> safeTactics sp)) terms
-  in take (fromIntegral $ parallelTerms sp) $ sortOn size $ do
+  cands = do
     tacts <- replicateM (fromIntegral $ parallelTactics sp) (snd <$> tactics sp)
     foldl (>>=) terms' tacts
+  sizedCands = [(size c,c) | c <- cands ]
+  batches = groupBy ((==) `on` fst) . sortOn fst $ sizedCands
+  uniques = concat $ fmap head . group . sortOn (show . snd) <$> batches
+  in take (fromIntegral $ parallelTerms sp) (snd <$> uniques)
 
+size :: NTerm -> Integer
+size = sizeD . nTermToD
 
-size :: Term -> Integer
-size = scriptSize . Script . UPLC.Program () (UPLC.Version () 0 0 0)
+sizeD :: DTerm -> Integer
+sizeD = scriptSize . Script . Program () (Version () 0 0 0)
 
 defaultShrinkParams :: ShrinkParams
 defaultShrinkParams = ShrinkParams
@@ -134,111 +199,89 @@ defaultShrinkParams = ShrinkParams
 -- Utilities to make tactics simpler
 
 completeTactic :: PartialTactic -> Tactic
-completeTactic pt term = let
-  tact = completeTactic pt
-    in case pt term of
-        Just terms -> descend tact term ++ terms
-        Nothing    -> descend tact term
+completeTactic = runScopedTact . completeTactic'
 
-descend :: Tactic -> Tactic
+completeTactic' :: PartialTactic -> ScopedTactic
+completeTactic' pt term = do
+  let st = completeTactic' pt
+  extras <- fromMaybe [] <$> pt term
+  descend st term <&> (++ extras)
+
+descend :: ScopedTactic -> ScopedTactic
 descend tact = \case
-       UPLC.Var ann name -> return $ UPLC.Var ann name
-       UPLC.LamAbs ann name term -> UPLC.LamAbs ann name <$> tact term
-       UPLC.Apply ann funTerm varTerm -> let
-         funTerms = tact funTerm
-         varTerms = tact varTerm
-          in UPLC.Apply ann funTerm varTerm :
-               [UPLC.Apply ann funTerm' varTerm | funTerm' <- drop 1 funTerms ]
-            ++ [UPLC.Apply ann funTerm varTerm' | varTerm' <- drop 1 varTerms ]
-       UPLC.Force ann term -> UPLC.Force ann <$> tact term
-       UPLC.Delay ann term -> UPLC.Delay ann <$> tact term
-       UPLC.Constant ann val -> return $ UPLC.Constant ann val
-       UPLC.Builtin ann fun  -> return $ UPLC.Builtin ann fun
-       UPLC.Error ann -> return $ UPLC.Error ann
+       Var _ name -> return [Var () name]
+       LamAbs _ name term -> fmap (LamAbs () name) <$> addNameToScope name (tact term)
+       Apply _ funTerm varTerm -> do
+         funTerms <- tact funTerm
+         varTerms <- tact varTerm
+         return $ Apply () funTerm varTerm :
+               [Apply () funTerm' varTerm  | funTerm' <- drop 1 funTerms ]
+            ++ [Apply () funTerm  varTerm' | varTerm' <- drop 1 varTerms ]
+       Force _ term -> fmap (Force ()) <$> tact term
+       Delay _ term -> fmap (Delay ()) <$> tact term
+       Constant _ val -> return [Constant () val]
+       Builtin _ fun  -> return [Builtin () fun]
+       Error _ -> return [Error ()]
 
-completeRec :: (Term -> Maybe Term) -> Term -> Term
+addNameToScope :: MonadReader (Scope,Scope) m => Name -> m a -> m a
+addNameToScope name = local $ second (S.insert name)
+
+completeRec :: (NTerm -> Maybe NTerm) -> NTerm -> NTerm
 completeRec partial originalTerm = let
   rec = completeRec partial
     in case partial originalTerm of
       Just term -> term
       Nothing ->
         case originalTerm of
-          UPLC.LamAbs ann name term -> UPLC.LamAbs ann name (rec term)
-          UPLC.Apply ann f x        -> UPLC.Apply ann (rec f) (rec x)
-          UPLC.Force ann term       -> UPLC.Force ann (rec term)
-          UPLC.Delay ann term       -> UPLC.Delay ann (rec term)
-          term                      -> term
+          LamAbs _ name term -> LamAbs () name (rec term)
+          Apply  _ f x       -> Apply  () (rec f) (rec x)
+          Force  _ term      -> Force  () (rec term)
+          Delay  _ term      -> Delay  () (rec term)
+          term               -> term
 
-appBind :: DeBruijn -> Term -> Term -> Term
+appBind :: Name -> NTerm -> NTerm -> NTerm
 appBind name val = completeRec $ \case
-      UPLC.Var _ varName -> if dbnIndex name == dbnIndex varName
+      Var _ varName -> if name == varName
                                then Just val
                                else Nothing
-      UPLC.LamAbs ann lname term -> Just $ UPLC.LamAbs ann lname (appBind (incName name) (incDeBruijns val) term)
       _ -> Nothing
 
-incName :: DeBruijn -> DeBruijn
-incName (DeBruijn n) = DeBruijn (n+1)
-
-incDeBruijns :: Term -> Term
-incDeBruijns = incDeBruijns' 1
-
-incDeBruijns' :: Index -> Term -> Term
-incDeBruijns' level = completeRec $ \case
-  UPLC.Var ann name -> Just $ UPLC.Var ann (incAbove level name)
-  UPLC.LamAbs ann name term -> Just $ UPLC.LamAbs ann name (incDeBruijns' (level + 1) term)
-  _                 -> Nothing
-
-decAbove :: Index -> DeBruijn -> DeBruijn
-decAbove level (DeBruijn n) = if n > level then DeBruijn (n-1) else DeBruijn n
-
-incAbove :: Index -> DeBruijn -> DeBruijn
-incAbove level (DeBruijn n) = if n > level then DeBruijn (n+1) else DeBruijn n
-
-decDeBruijns :: Term -> Term
-decDeBruijns = decDeBruijns' 1
-
-decDeBruijns' :: Index -> Term -> Term
-decDeBruijns' level = completeRec $ \case
-  UPLC.Var ann name -> Just $ UPLC.Var ann (decAbove level name)
-  UPLC.LamAbs ann name term -> Just $ UPLC.LamAbs ann name (decDeBruijns' (level + 1) term)
-  _                 -> Nothing
-
-mentions :: DeBruijn -> Term -> Bool
-mentions name@(DeBruijn n) = \case
-  UPLC.Var _ (DeBruijn vn) -> vn == n
-  UPLC.LamAbs _ _ term     -> mentions (incName name) term
-  UPLC.Apply _ f x         -> mentions name f || mentions name x
-  UPLC.Force _ term        -> mentions name term
-  UPLC.Delay _ term        -> mentions name term
+mentions :: Name -> NTerm -> Bool
+mentions name = \case
+  Var _ vname -> vname == name
+  LamAbs _ lname term -> lname /= name && mentions name term
+  Apply _ f x         -> mentions name f || mentions name x
+  Force _ term        -> mentions name term
+  Delay _ term        -> mentions name term
   _                        -> False
 
-whnf :: Term -> WhnfRes
+whnf :: NTerm -> WhnfRes
 whnf = whnf' 100
 
-whnf' :: Integer -> Term -> WhnfRes
+whnf' :: Integer -> NTerm -> WhnfRes
 whnf' 0 = const Unclear
 whnf' n = let
   rec = whnf' (n-1)
     in \case
-  UPLC.Var{} -> Unclear
-  UPLC.LamAbs{} -> Safe
-  UPLC.Apply _ (UPLC.LamAbs _ name lTerm) valTerm -> case rec valTerm of
-                                                       Err -> Err
-                                                       res -> min res $
-                                                          rec (appBind name valTerm lTerm)
-  UPLC.Apply _ (UPLC.Apply _ (UPLC.Builtin _ builtin) arg1) arg2 -> if safe2Arg builtin
-                                                                       then min (rec arg1) (rec arg2)
-                                                                       else min Unclear $ min (rec arg1) (rec arg2)
-  UPLC.Apply _ fTerm xTerm -> min Unclear $ min (rec fTerm) (rec xTerm)
+  Var{} -> Unclear
+  LamAbs{} -> Safe
+  Apply _ (LamAbs _ name lTerm) valTerm -> 
+    case rec valTerm of
+      Err -> Err
+      res -> min res $ rec (appBind name valTerm lTerm)
+  Apply _ (Apply _ (Builtin _ builtin) arg1) arg2 -> 
+    if safe2Arg builtin
+       then min (rec arg1) (rec arg2)
+       else min Unclear $ min (rec arg1) (rec arg2)
+  Apply _ fTerm xTerm -> min Unclear $ min (rec fTerm) (rec xTerm)
     -- it should be possible to make this clear more often
     -- ie. a case over builtins
-  UPLC.Force _ (UPLC.Delay _ term) -> rec term
-  UPLC.Force{} -> Unclear
-  UPLC.Delay{} -> Safe
-  UPLC.Constant{} -> Safe
-  UPLC.Builtin{} -> Safe
-  UPLC.Error{} -> Err
+  Force _ (Delay _ term) -> rec term
+  Force{} -> Unclear
+  Delay{} -> Safe
+  Constant{} -> Safe
+  Builtin{} -> Safe
+  Error{} -> Err
 
 safe2Arg :: DefaultFun -> Bool
 safe2Arg = \case
@@ -265,150 +308,138 @@ safe2Arg = \case
   MkPairData               -> True
   _                        -> False
 
-subTerms :: Term -> [(Integer,Term)]
-subTerms = subTerms' 0
+subTerms :: NTerm -> [(Scope,NTerm)]
+subTerms t = (S.empty,t):case t of
+                 LamAbs _ n term         -> first (S.insert n) <$> subTerms term
+                 Apply _ funTerm varTerm -> subTerms funTerm ++ subTerms varTerm
+                 Force _ term            -> subTerms term
+                 Delay _ term            -> subTerms term
+                 Var{}      -> []
+                 Constant{} -> []
+                 Builtin{}  -> []
+                 Error{}    -> []
 
-subTerms' :: Integer -> Term -> [(Integer,Term)]
-subTerms' n t = (n,t):case t of
-                 UPLC.LamAbs _ _ term -> subTerms' (n+1) term
-                 UPLC.Apply _ funTerm varTerm -> subTerms' n funTerm ++ subTerms' n varTerm
-                 UPLC.Force _ term -> subTerms' n term
-                 UPLC.Delay _ term -> subTerms' n term
-                 UPLC.Var{}      -> []
-                 UPLC.Constant{} -> []
-                 UPLC.Builtin{}  -> []
-                 UPLC.Error{}    -> []
-
-unsub :: (Integer,Term) -> DeBruijn -> Term -> Term
-unsub = unsub' 0
-
-unsub' :: Integer -> (Integer,Term) -> DeBruijn -> Term -> Term
-unsub' depth replacing@(replacingd,replacingt) replaceWith = completeRec $ \case
-  UPLC.LamAbs () name term ->
-    Just $ UPLC.LamAbs () name $
-      unsub' (depth+1) (replacingd,replacingt) (incName replaceWith) term
+unsub :: NTerm -> Name -> NTerm -> NTerm
+unsub replacing replaceWith = completeRec $ \case
   term
-    | (depth,term) `equiv` replacing  -> Just $ UPLC.Var () replaceWith
+    | term == replacing -> Just $ Var () replaceWith
   _ -> Nothing
 
-equiv :: (Integer,Term) -> (Integer,Term) -> Bool
-equiv = equiv' 0
+equiv :: (Scope,NTerm) -> (Scope,NTerm) -> Bool
+equiv (lscope,lterm) (rscope,rterm)
+     = not (uses lscope lterm) 
+    && not (uses rscope rterm) 
+    && lterm == rterm
 
-equiv' :: Integer -> (Integer,Term) -> (Integer,Term) -> Bool
-equiv' localDepth (ldepth,lterm) (rdepth,rterm)
-  = case (lterm,rterm) of
-      (UPLC.Error    _       ,UPLC.Error    _       ) -> True
-      (UPLC.Builtin  _ lf    ,UPLC.Builtin  _ rf    ) -> lf   == rf
-      (UPLC.Constant _ lval  ,UPLC.Constant _ rval  ) -> lval == rval
-      (UPLC.Force    _ lt    ,UPLC.Force    _ rt    ) ->
-        equiv' localDepth (ldepth,lt) (rdepth,rt)
-      (UPLC.Delay    _ lt    ,UPLC.Delay    _ rt    ) ->
-        equiv' localDepth (ldepth,lt) (rdepth,rt)
-      (UPLC.Apply _ lf lx    ,UPLC.Apply _ rf rx    ) ->
-        equiv' localDepth (ldepth,lf) (rdepth,rf) &&
-        equiv' localDepth (ldepth,lx) (rdepth,rx)
-      (UPLC.LamAbs _ _ lt    ,UPLC.LamAbs _ _ rt    ) ->
-        equiv' (localDepth +1) (ldepth,lt) (rdepth,rt)
-      (UPLC.Var _ (DeBruijn (Index lin)) ,UPLC.Var _ (DeBruijn(Index rin)) )
-        | li == ri && ri < localDepth -> True -- variables are local and equal
-        | li - ldepth == ri - rdepth
-          && li > localDepth + ldepth -> True
-            where
-              li = fromIntegral lin
-              ri = fromIntegral rin
-          -- variables are the same reference which is
-          -- further out than the last common ancestor
-      _ -> False
+  {-
+-- compares two (scoped) terms and maybe returns a template the number of nodes of the template and the number of holes in the template
+weakEquiv :: (Scope,NTerm) -> (Scope,NTerm) -> Maybe (NTerm,Int,Int)
+weakEquiv (lscope,lterm) (rscope,rterm) = do
+    guard $ not (uses lscope lterm) 
+    guard $ not (uses rscope rterm) 
+    weakEquiv' lterm rterm
 
-unDepth :: (Integer,Term) -> Term
-unDepth = unDepth' 0
+weakEquiv' :: NTerm -> NTerm -> StateT Int Maybe (NTerm,Int)
+weakEquiv' = curry $ \case
+  (LamAbs _ ln lt,LamAbs _ rn rt) -> do
+    (t,n) <- weakEquiv' lt (subName ln rn rt)
+    return (LamAbs () ln t,n,h)
+  (Apply _ lf lx,Apply _ rf rx) -> do
+    (ft,fnodes,fholes) <- weakEquiv' lf rf
+    (xt,xnodes,xholes) <- weakEquiv' lx rx
+    return (Apply () ft xt,fnodes+xnodes,fholes+xholes)
+  (Delay _ l,Delay _ r) -> first3 (Delay ()) <$> weakEquiv' l r
+  (Force _ l,Force _ r) -> first3 (Force ()) <$> weakEquiv' l r
+  (l,r) 
+    | l == r    -> Just (l,0,0)
+    | otherwise -> do
+      hn <- get
+      modify (+1)
+      return $ (Var () (Name{nameString="hole",0)
 
-unDepth' :: Integer -> (Integer,Term) -> Term
-unDepth' localDepth (depth,t) = ( completeRec $ \case
-  UPLC.Var _ (DeBruijn (Index nat))
-    | i <= localDepth         -> Just $ UPLC.Var () (DeBruijn (Index nat))
-    | i >= localDepth + depth -> Just $ UPLC.Var () (DeBruijn (Index (fromIntegral $ i - depth)))
-    | otherwise -> error "unDepth called with bad term"
-      where
-        i = fromIntegral nat
-  UPLC.LamAbs () name term ->
-    Just $ UPLC.LamAbs () name $ unDepth' (localDepth +1) (depth,term)
+subName :: Name -> Name -> NTerm -> NTerm
+subName replace replaceWith = completeRec $ \case
+  LamAbs _ n t -> Just $ LamAbs () (if n == replace then replaceWith else n) (subName replace replaceWith t)
+  Var _ n      -> Just $ Var () (if n == replace then replaceWith else n)
   _ -> Nothing
-                                ) t
+      -}
+
+uses :: Scope -> NTerm -> Bool
+uses s = \case
+  Apply _ f x -> uses s f || uses s x
+  Delay _ t -> uses s t
+  Force _ t -> uses s t
+  LamAbs _ n t -> n `S.notMember` s && uses s t
+  Var _ n -> n `S.member` s 
+  _ -> False
+
+newName :: ScopeM Name
+newName = do
+  n <- get
+  modify (+1)
+  return $ Name (pack $ show n) (Unique $ fromIntegral n)
 
 -- Tactics
 
 subs :: Tactic
 subs = completeTactic $ \case
-      UPLC.Apply _ (UPLC.LamAbs _ name funTerm) varTerm ->
+      Apply _ (LamAbs _ name funTerm) varTerm ->
         case whnf varTerm of
-          Safe -> return . return $ decDeBruijns $ appBind (incName name) varTerm funTerm
-          Unclear -> Nothing
-          Err -> return . return $ UPLC.Error ()
-      _ -> Nothing
+          Safe -> return $ Just [appBind name varTerm funTerm]
+          Unclear -> return Nothing
+          Err -> return $ Just [Error ()]
+      _ -> return Nothing
 
 unsubs :: Tactic
 unsubs = completeTactic $ \case
-  UPLC.Apply () funTerm varTerm -> let
+  Apply () funTerm varTerm -> let
     fSubterms = subTerms funTerm
     vSubterms = subTerms varTerm
-        in Just $ do
+        in (Just <$>) . sequence $ do
           fSubterm <- fSubterms
           vSubterm <- vSubterms
           guard $ fSubterm `equiv` vSubterm
-          let funTerm' = unsub fSubterm (DeBruijn (Index 1)) funTerm
-              varTerm' = unsub vSubterm (DeBruijn (Index 1)) varTerm
-          return $ UPLC.Apply ()
-            (
-              UPLC.LamAbs () (DeBruijn (Index 0))
-                ( UPLC.Apply () funTerm' varTerm' )
-            ) (unDepth fSubterm)
+          return $ do
+            name <- newName 
+            let funTerm' = unsub (snd fSubterm) name funTerm
+                varTerm' = unsub (snd vSubterm) name varTerm
+            return $ Apply ()
+              (
+                LamAbs () name
+                  ( Apply () funTerm' varTerm' )
+              ) (snd fSubterm)
 
-  _ -> Nothing
+  _ -> return Nothing
 
 uplcCurry :: Tactic
 uplcCurry = completeTactic $ \case
-  UPLC.Apply _
-    (UPLC.LamAbs _ name term)
-    (UPLC.Apply _ (UPLC.Apply _ (UPLC.Builtin _ MkPairData) pairFst) pairSnd)
-      -> let
-            newTerm = cleanPairs $ appBind name
-              (UPLC.Apply () (UPLC.Apply () (UPLC.Builtin () MkPairData)
-                (UPLC.Var () (DeBruijn $ Index 1)))
-                (UPLC.Var () (DeBruijn $ Index 2)))
-                $ decDeBruijns term
-            in return . return $
-                    UPLC.Apply ()
-                      (UPLC.LamAbs ()
-                        (DeBruijn $ Index 0)
-                        (UPLC.Apply ()
-                          (UPLC.LamAbs ()
-                            (DeBruijn $ Index 0)
-                            newTerm
-                          )
-                          pairFst
-                        )
-                      ) pairSnd
-  _ -> Nothing
+  Apply _
+    (LamAbs _ name term)
+    (Apply _ (Apply _ (Builtin _ MkPairData) pairFst) pairSnd) -> do
+      n1 <- newName 
+      n2 <- newName 
+      let newTerm =  cleanPairs $ appBind name (Apply () (Apply () (Builtin () MkPairData) (Var () n1)) (Var () n2)) term
+      return $ Just [ Apply () (LamAbs () n1 (Apply () (LamAbs () n2 newTerm) pairFst)) pairSnd ]
+  _ -> return Nothing
 
 -- Safe Tactics
 
 cleanPairs :: SafeTactic
 cleanPairs = completeRec $ \case
-  UPLC.Apply _
-    (UPLC.Builtin _ FstPair)
-    (UPLC.Apply _
-      (UPLC.Apply _
-        (UPLC.Builtin _ MkPairData)
+  Apply _
+    (Builtin _ FstPair)
+    (Apply _
+      (Apply _
+        (Builtin _ MkPairData)
         fstTerm
         )
       _
     ) -> Just $ cleanPairs fstTerm
-  UPLC.Apply _
-    (UPLC.Builtin _ SndPair)
-    (UPLC.Apply _
-      (UPLC.Apply _
-        (UPLC.Builtin _ MkPairData)
+  Apply _
+    (Builtin _ SndPair)
+    (Apply _
+      (Apply _
+        (Builtin _ MkPairData)
         _
         )
       sndTerm
@@ -419,12 +450,12 @@ cleanPairs = completeRec $ \case
 
 removeDeadCode :: SafeTactic
 removeDeadCode = completeRec $ \case
-  (UPLC.Apply _ (UPLC.LamAbs _ name term) val) ->
+  (Apply _ (LamAbs _ name term) val) ->
     case whnf val of
-        Safe -> if mentions (incName name) term
+        Safe -> if mentions name term
            then Nothing
-           else Just $ decDeBruijns term
+           else Just term
         Unclear -> Nothing
-        Err -> Just $ UPLC.Error ()
+        Err -> Just $ Error ()
   _ -> Nothing
 
