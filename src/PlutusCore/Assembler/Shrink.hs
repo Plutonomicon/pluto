@@ -1,8 +1,10 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE FlexibleContexts    #-}
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE NoImplicitPrelude   #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns         #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE LambdaCase           #-}
+{-# LANGUAGE NoImplicitPrelude    #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module PlutusCore.Assembler.Shrink
   (shrinkCompiled
@@ -26,43 +28,49 @@ module PlutusCore.Assembler.Shrink
               )where
 
 
-import           Codec.Serialise
-import           Control.Monad                (replicateM, sequence)
-import           Control.Monad.Reader         (MonadReader, ReaderT, local,
+import           Codec.Serialise              (serialise)
+import           Control.Monad                (join, liftM2, replicateM,
+                                               sequence)
+import           Control.Monad.Reader         (MonadReader, ReaderT, ask, local,
                                                runReaderT)
-import           Control.Monad.State          (State, StateT, evalStateT, get,
-                                               modify)
+import           Control.Monad.State          (MonadState, State, StateT,
+                                               evalStateT, get, modify, put,
+                                               runState, runStateT)
 import           Data.ByteString.Lazy         (toStrict)
 import           Data.Function                (on)
 import           Data.Functor                 ((<&>))
 import           Data.Functor.Identity        (runIdentity)
-import           Data.List                    (filter, group, groupBy, maximum,
-                                               notElem, sortOn)
+import           Data.List                    (and, elem, filter, foldr, group,
+                                               groupBy, maximum, notElem,
+                                               sortOn)
+import qualified Data.Map                     as M
 import           Data.Maybe                   (fromMaybe)
 import           Data.Set                     (Set)
 import qualified Data.Set                     as S
 import           Data.Text                    (pack)
-import           Plutus.V1.Ledger.Scripts     (Script (..), fromCompiledCode,
-                                               scriptSize)
+import           Plutus.V1.Ledger.Scripts     (Script (Script),
+                                               fromCompiledCode, scriptSize)
 import           PlutusCore                   (FreeVariableError, runQuoteT)
 import           PlutusCore.Assembler.Prelude
-import           PlutusCore.DeBruijn          (DeBruijn (..), fakeNameDeBruijn)
+import           PlutusCore.DeBruijn          (DeBruijn, fakeNameDeBruijn)
 import           PlutusCore.Default           (DefaultFun (..), DefaultUni)
 import           PlutusTx.Code                (CompiledCode,
-                                               CompiledCodeIn (..))
-import           UntypedPlutusCore            (Name (..), Unique (..),
-                                               Version (..), deBruijnTerm,
+                                               CompiledCodeIn (DeserializedCode, SerializedCode))
+import           UntypedPlutusCore            (Name (Name, nameUnique),
+                                               Unique (Unique, unUnique),
+                                               Version (Version), deBruijnTerm,
                                                programMapNames, termMapNames,
                                                unDeBruijnTerm, unNameDeBruijn)
-import           UntypedPlutusCore.Core.Type  (Program (..), Term (..))
+import           UntypedPlutusCore.Core.Type  (Program (Program),
+                                               Term (Apply, Builtin, Constant, Delay, Error, Force, LamAbs, Var))
 
 type DTerm    = Term    DeBruijn DefaultUni DefaultFun ()
 type NTerm    = Term    Name     DefaultUni DefaultFun ()
 type DProgram = Program DeBruijn DefaultUni DefaultFun ()
 
 type Scope = Set Name
-type ScopeMT m a = ReaderT (Scope,Scope) (StateT Integer m) a
-type ScopeM    a = ReaderT (Scope,Scope) (State  Integer  ) a
+type ScopeMT m = ReaderT (Scope,Scope) (StateT Integer m)
+type ScopeM    = ReaderT (Scope,Scope) (State  Integer  )
 
 type SafeTactic = NTerm -> NTerm
 -- safe tactics are shortening strategies which
@@ -91,6 +99,10 @@ data ShrinkParams = ShrinkParams
 
 data WhnfRes = Err | Unclear  | Safe deriving (Eq,Ord)
 
+class (MonadReader (Scope,Scope) m,MonadState Integer m) => MonadScope m where
+
+instance Monad m => MonadScope (ScopeMT m) where
+
 runScopeMT :: Monad m => NTerm -> ScopeMT m a -> m a
 runScopeMT nt smtma = let
   globalScope = usedScope nt
@@ -108,6 +120,14 @@ usedScope = \case
   Delay _ t    -> usedScope t
   Apply _ f x  -> S.union (usedScope f) (usedScope x)
   _            -> S.empty
+
+liftScope :: Monad m => ScopeM a -> ScopeMT m a
+liftScope sma = do
+  s <- ask
+  f <- get
+  let (a,f') = runState (runReaderT sma s) f
+  put f'
+  return a
 
 runScopedTact :: (NTerm -> ScopeM a) -> NTerm -> a
 runScopedTact f nt = runScopeM nt (f nt)
@@ -197,7 +217,7 @@ sizeD = scriptSize . Script . Program () (Version () 0 0 0)
 defaultShrinkParams :: ShrinkParams
 defaultShrinkParams = ShrinkParams
   { safeTactics = [("removeDeadCode",removeDeadCode),("clean pairs",cleanPairs)]
-  , tactics = [("subs",subs),("unsubs",unsubs),("curry",uplcCurry)]
+  , tactics = [("subs",subs),("unsubs",unsubs),("curry",uplcCurry),("strongUnsubs",strongUnsubs)]
   , parallelTactics = 1
   , parallelTerms = 20
   , extraSteps = 5
@@ -233,6 +253,7 @@ descend tact = \case
 addNameToScope :: MonadReader (Scope,Scope) m => Name -> m a -> m a
 addNameToScope name = local $ second (S.insert name)
 
+-- TODO rewrite this in terms of completeRecScope
 completeRec :: (NTerm -> Maybe NTerm) -> NTerm -> NTerm
 completeRec partial originalTerm = let
   rec = completeRec partial
@@ -245,6 +266,19 @@ completeRec partial originalTerm = let
           Force  _ term      -> Force  () (rec term)
           Delay  _ term      -> Delay  () (rec term)
           term               -> term
+
+completeRecScope :: (NTerm -> ScopeM (Maybe NTerm)) -> NTerm -> ScopeM NTerm
+completeRecScope partial originalTerm = let
+  rec = completeRecScope partial
+    in partial originalTerm >>= \case
+      Just term -> return term
+      Nothing ->
+        case originalTerm of
+          LamAbs _ name term -> LamAbs () name <$> rec term
+          Apply  _ f x       -> Apply  () <$> rec f <*> rec x
+          Force  _ term      -> Force  () <$> rec term
+          Delay  _ term      -> Delay  () <$> rec term
+          term               -> return term
 
 appBind :: Name -> NTerm -> NTerm -> NTerm
 appBind name val = completeRec $ \case
@@ -338,38 +372,51 @@ equiv (lscope,lterm) (rscope,rterm)
     && not (uses rscope rterm)
     && lterm == rterm
 
-  {-
--- compares two (scoped) terms and maybe returns a template the number of nodes of the template and the number of holes in the template
-weakEquiv :: (Scope,NTerm) -> (Scope,NTerm) -> Maybe (NTerm,Int,Int)
+-- compares two (scoped) terms and maybe returns a template
+-- the number of nodes of the template and the holes in the template
+weakEquiv :: (Scope,NTerm) -> (Scope,NTerm) -> ScopeMT Maybe (NTerm,Integer,[Name])
 weakEquiv (lscope,lterm) (rscope,rterm) = do
+    -- ensure that unshared scope is not used
     guard $ not (uses lscope lterm)
     guard $ not (uses rscope rterm)
     weakEquiv' lterm rterm
 
-weakEquiv' :: NTerm -> NTerm -> StateT Int Maybe (NTerm,Int)
+weakEquiv' :: NTerm -> NTerm -> ScopeMT Maybe (NTerm,Integer,[Name])
 weakEquiv' = curry $ \case
-  (LamAbs _ ln lt,LamAbs _ rn rt) -> do
-    (t,n) <- weakEquiv' lt (subName ln rn rt)
-    return (LamAbs () ln t,n,h)
+  (LamAbs _ ln lt,LamAbs _ rn rt)
+    | ln == rn -> do
+      (t,n,hs) <- weakEquiv' lt rt
+      return (LamAbs () ln t,n,hs)
+    | otherwise -> do
+      rt' <- subName ln rn rt
+      (t,n,hs) <- weakEquiv' lt rt'
+      return (LamAbs () ln t,n,hs)
   (Apply _ lf lx,Apply _ rf rx) -> do
     (ft,fnodes,fholes) <- weakEquiv' lf rf
     (xt,xnodes,xholes) <- weakEquiv' lx rx
-    return (Apply () ft xt,fnodes+xnodes,fholes+xholes)
-  (Delay _ l,Delay _ r) -> first3 (Delay ()) <$> weakEquiv' l r
-  (Force _ l,Force _ r) -> first3 (Force ()) <$> weakEquiv' l r
+    return (Apply () ft xt,fnodes+xnodes,fholes++xholes)
+  (Delay _ l,Delay _ r) -> do
+    (t,n,h) <- weakEquiv' l r
+    return (Delay () t,n+1,h)
+  (Force _ l,Force _ r) -> do
+    (t,n,h) <- weakEquiv' l r
+    return (Force () t,n+1,h)
   (l,r)
-    | l == r    -> Just (l,0,0)
+    | l == r    -> return (l,1,[])
     | otherwise -> do
-      hn <- get
-      modify (+1)
-      return $ (Var () (Name{nameString="hole",0)
+        holeName <- newName
+        return (Var () holeName,1,[holeName])
 
-subName :: Name -> Name -> NTerm -> NTerm
-subName replace replaceWith = completeRec $ \case
-  LamAbs _ n t -> Just $ LamAbs () (if n == replace then replaceWith else n) (subName replace replaceWith t)
+subName :: MonadScope m => Name -> Name -> NTerm -> m NTerm
+subName replace replaceWith term = do
+  new <- newName
+  return $ subName' replace replaceWith $ subName' replaceWith new term
+
+subName' :: Name -> Name -> NTerm -> NTerm
+subName' replace replaceWith = completeRec $ \case
+  LamAbs _ n t -> Just $ LamAbs () (if n == replace then replaceWith else n) (subName' replace replaceWith t)
   Var _ n      -> Just $ Var () (if n == replace then replaceWith else n)
   _ -> Nothing
-      -}
 
 uses :: Scope -> NTerm -> Bool
 uses s = \case
@@ -380,7 +427,7 @@ uses s = \case
   Var _ n      -> n `S.member` s
   _            -> False
 
-newName :: ScopeM Name
+newName :: MonadScope m => m Name
 newName = do
   n <- get
   modify (+1)
@@ -415,8 +462,73 @@ unsubs = completeTactic $ \case
                 LamAbs () name
                   ( Apply () funTerm' varTerm' )
               ) (snd fSubterm)
-
   _ -> return Nothing
+
+strongUnsubs :: Tactic
+strongUnsubs = completeTactic $ \case
+  Apply () funTerm varTerm -> let
+    fSubterms = subTerms funTerm
+    vSubterms = subTerms varTerm
+      in sepMaybe $ sequence $ do
+        fSubterm <- fSubterms
+        vSubterm <- vSubterms
+        return $ do
+          (template,nodes,holes) <- weakEquiv fSubterm vSubterm
+          guard $ nodes > 3 -- any less than this is probably unproductive to work with
+          name <- newName
+          funTerm' <- liftScope $ withTemplate name (template,holes) (snd fSubterm)
+          varTerm' <- liftScope $ withTemplate name (template,holes) (snd vSubterm)
+          let templateArg = makeLambs holes template
+          return $ Apply ()
+            (
+              LamAbs () name
+                ( Apply () funTerm' varTerm' )
+            ) templateArg
+  _ -> return Nothing
+
+sepMaybe :: ScopeMT Maybe a -> ScopeM (Maybe a)
+sepMaybe smtma = do
+  s <- ask
+  f <- get
+  case runStateT (runReaderT smtma s) f of
+    Just (a,f') -> put f' >> return (Just a)
+    Nothing     -> return Nothing
+
+makeLambs :: [Name] -> NTerm -> NTerm
+makeLambs = flip $ foldr (LamAbs ())
+
+
+withTemplate :: Name -> (NTerm,[Name]) -> NTerm -> ScopeM NTerm
+withTemplate templateName (template,holes) = completeRecScope $ \target -> do
+  args <- findHoles holes template target
+  return $ applyArgs (Var () templateName) . M.elems <$> args
+
+findHoles :: [Name] -> NTerm -> NTerm -> ScopeM (Maybe (Map Name NTerm))
+findHoles holes template subTerm
+  | template == subTerm = return $ Just M.empty
+  | otherwise = case (template,subTerm) of
+    (Var () nt,st)
+      | nt `elem` holes -> return $ Just $ M.singleton nt st
+    (Force _ t,Force _ s)  -> findHoles holes t s
+    (Delay _ t,Delay _ s)  -> findHoles holes t s
+    (LamAbs _ tn tt,LamAbs _ sn st)
+      | tn == sn -> findHoles holes tt st
+      | otherwise -> do
+        st' <- subName tn sn st
+        findHoles holes tt st'
+    (Apply _ tf tx,Apply _ sf sx) -> join <$> liftM2 (liftM2 reconsile)
+      (findHoles holes tf sf)
+      (findHoles holes tx sx)
+    _ -> return Nothing
+
+reconsile :: (Ord k,Eq a) => Map k a -> Map k a -> Maybe (Map k a)
+reconsile m1 m2 = do
+  guard $ and $ M.intersectionWith (==) m1 m2
+  return $ M.union m1 m2
+
+applyArgs :: NTerm -> [NTerm] -> NTerm
+applyArgs = foldl (Apply ())
+
 
 uplcCurry :: Tactic
 uplcCurry = completeTactic $ \case
