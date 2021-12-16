@@ -17,16 +17,17 @@ import           System.Directory                         (doesFileExist,
 import           System.FilePath                          ((</>))
 
 import           Plutus.V1.Ledger.Scripts                 (Script (..))
-import qualified Plutus.V1.Ledger.Scripts                 as Scripts
+--import qualified Plutus.V1.Ledger.Scripts                 as Scripts
 import qualified PlutusCore                               as PLC
-import           PlutusCore.Assembler.Assemble            (parseProgram,
-                                                           translate)
+import           PlutusCore.Assembler.Assemble            (parseProgram)
+import           PlutusCore.Assembler.AnnDeBruijn        (annDeBruijn)
+import           PlutusCore.Assembler.Desugar            (desugar)
 import           PlutusCore.Assembler.Prelude
 import           PlutusCore.Assembler.Shrink              (SafeTactic, Tactic,
-                                                           Term,
+                                                           NTerm,
                                                            defaultShrinkParams,
                                                            safeTactics, size,
-                                                           tactics)
+                                                           tactics,dTermToN)
 import           PlutusCore.Assembler.Spec.Gen            (genUplc)
 import           PlutusCore.Assembler.Spec.Prelude
 import           PlutusCore.Default                       (DefaultFun,
@@ -35,7 +36,7 @@ import           PlutusCore.Evaluation.Machine.ExBudget   (ExBudget (..),
                                                            ExRestrictingBudget (..))
 import           PlutusCore.Name                          (Name)
 import qualified UntypedPlutusCore.Core.Type              as UPLC
-import           UntypedPlutusCore.DeBruijn               (Index (..))
+--import           UntypedPlutusCore.DeBruijn               (Index (..))
 import           UntypedPlutusCore.Evaluation.Machine.Cek
 
 import           Data.Text                                (pack)
@@ -44,8 +45,6 @@ import           Hedgehog                                 (MonadTest, annotate,
 import qualified Hedgehog.Gen                             as Gen
 import           PlutusCore.Evaluation.Machine.ExMemory   (ExCPU (..),
                                                            ExMemory (..))
-import           Test.Tasty                               (localOption)
-import           Test.Tasty.Hedgehog                      (HedgehogTestLimit (..))
 
 type Result = Either
   (CekEvaluationException DefaultUni DefaultFun)
@@ -54,11 +53,11 @@ type Result = Either
 tests :: TestTree
 tests =
   testGroup "shrinking tactics" (
-     [ localOption (HedgehogTestLimit Nothing) exampleUnitTests ] ++
      [ testGroup tactName [ testSafeTactic tactName tact , testSafeTacticShrinks tact ]
-     | (tactName,tact) <- safeTactics defaultShrinkParams ] ++
+       | (tactName,tact) <- safeTactics defaultShrinkParams ] ++
      [ testGroup tactName [ testTactic     tactName tact ]
-     | (tactName,tact) <- tactics     defaultShrinkParams ]
+       | (tactName,tact) <- tactics     defaultShrinkParams ] ++
+     [ exampleUnitTests ] 
                                 )
 
 data TacticType = Safe | Unsafe deriving Show
@@ -69,7 +68,7 @@ exampleUnitTests = testProperty "tactics don't break examples (generally a slow 
   unitTests <- liftIO $ fmap ("./examples/unitTests" </>) <$> listDirectory "./examples/unitTests"
   examples  <- liftIO $ filterM doesFileExist (examples' ++ unitTests)
   srcs     <- liftIO $ mapM (fmap pack . readFile) examples
-  let uplcs' = rights [ (name,) <$> ( parseProgram name >=> translate $ src )
+  let uplcs' = rights [ (name,) <$> ( parseProgram name >=> (fmap Script . desugar . annDeBruijn) $ src )
                       | (name,src) <- zip examples srcs ]
       uplcs  = [(name,uplc) | (name,Script (UPLC.Program _ _ uplc)) <- uplcs' ]
   (exampleName,uplc) <- forAll $ Gen.choice (return <$> uplcs)
@@ -84,14 +83,13 @@ exampleUnitTests = testProperty "tactics don't break examples (generally a slow 
       return (tactName,return . tact)
 
   annotate $ exampleName ++ " was broken by " ++ tactName
-  testTacticOn tactName tact uplc
+  testTacticOn tactName tact (dTermToN uplc)
 
-testTacticOn :: MonadTest m => String -> Tactic -> Term -> m ()
+testTacticOn :: MonadTest m => String -> Tactic -> NTerm -> m ()
 testTacticOn tactName tact uplc = do
   let res = run uplc
-  let asScript = Script . UPLC.Program () (UPLC.Version () 0 0 0)
   let fails = [ uplc' | uplc' <- tact uplc
-              , asScript uplc' /= asScript uplc
+              , uplc' /= uplc
               , run uplc' ~/= res ]
   case fails of
     [] -> success
@@ -103,19 +101,18 @@ testTacticOn tactName tact uplc = do
       annotate $ "produced: " ++  show (run bad)
       failure
 
-
 testSafeTactic :: String -> SafeTactic -> TestTree
 testSafeTactic tactName safeTactic = testTactic tactName (return  . safeTactic)
 
 testSafeTacticShrinks :: SafeTactic -> TestTree
 testSafeTacticShrinks st = testProperty "Safe tactic doesn't grow code" . property $ do
-  uplc <- forAll genUplc
+  uplc <- dTermToN <$> forAll genUplc
   assert $ size uplc >= size (st uplc)
 
 testTactic :: String -> Tactic -> TestTree
 testTactic tactName tactic = testProperty "Tactic doesn't break code" . property $ do
   uplc <- forAll genUplc
-  testTacticOn tactName tactic uplc
+  testTacticOn tactName tactic (dTermToN uplc)
 
 class Similar a where
   (~=) :: a -> a -> Bool
@@ -135,7 +132,7 @@ instance Similar ExMemory where
   a ~= b = 5 * abs (a-b) < abs a+abs b
 
 instance Similar Result where
-  a ~= b = case (a,b) of
+  (~=) = curry $ \case 
            (Left _,Left _)             -> True
            (Right lValue,Right rValue) -> lValue ~= rValue
            _                           -> False
@@ -156,23 +153,18 @@ instance Similar (UPLC.Term Name DefaultUni DefaultFun ()) where
 (~/=) :: Similar a => a -> a -> Bool
 a ~/= b = not $ a ~= b
 
-run :: Term -> (Result,RestrictingSt)
-run = runWithCek . grabTerm . Scripts.mkTermToEvaluate . Script . UPLC.Program () (UPLC.Version () 0 0 0)
-  where
-    grabTerm (Right (UPLC.Program _ _ term)) = term
-    grabTerm (Left err)                      = error $ show err
-
-runWithCek :: UPLC.Term Name DefaultUni DefaultFun () -> (Result,RestrictingSt)
-runWithCek = runCekNoEmit PLC.defaultCekParameters ( restricting . ExRestrictingBudget $ ExBudget
+run :: NTerm -> (Result,RestrictingSt)
+run = runCekNoEmit PLC.defaultCekParameters ( restricting . ExRestrictingBudget $ ExBudget
     { exBudgetCPU    = 1_000_000_000 :: ExCPU
     , exBudgetMemory = 1_000_000     :: ExMemory
       } )
 
-prettyPrintTerm :: Term -> String
-prettyPrintTerm = \case
- UPLC.Var () (PLC.DeBruijn (Index i)) -> "V" ++ show i
- UPLC.LamAbs () (PLC.DeBruijn (Index 0)) term -> "(\\" ++ prettyPrintTerm term ++ ")"
- UPLC.LamAbs () (PLC.DeBruijn (Index i)) _ -> error $ "bad DeBruijn index" ++ show i
+prettyPrintTerm :: NTerm -> String
+prettyPrintTerm = let
+    showName n = "V-" ++ show (PLC.unUnique (PLC.nameUnique n))
+                   in \case
+ UPLC.Var () name -> showName name
+ UPLC.LamAbs () name term -> "(\\" ++ showName name ++ "->" ++ prettyPrintTerm term ++ ")"
  UPLC.Apply () f@(UPLC.LamAbs{}) x -> prettyPrintTerm f ++ " (" ++ prettyPrintTerm x ++ ")"
  UPLC.Apply () f x -> "(" ++ prettyPrintTerm f ++ ") (" ++ prettyPrintTerm x ++ ")"
  UPLC.Force () term -> "!(" ++ prettyPrintTerm term ++ ")"
