@@ -18,6 +18,7 @@ module PlutusCore.Assembler.Shrink
   ,SafeTactic
   ,DTerm
   ,NTerm
+  ,shrinkDTerm
   ,dTermToN
   ,nTermToD
   ,defaultShrinkParams
@@ -175,8 +176,8 @@ dTermToN = (\case
   Left s  -> error $ "dTermToN failed with" ++ show (s :: FreeVariableError)
   ) . runQuoteT . unDeBruijnTerm . termMapNames fakeNameDeBruijn
 
---shrinkDTerm :: DTerm -> DTerm
---shrinkDTerm = shrinkDTermSp defaultShrinkParams
+shrinkDTerm :: DTerm -> DTerm
+shrinkDTerm = shrinkDTermSp defaultShrinkParams
 
 shrinkDTermSp :: ShrinkParams -> DTerm -> DTerm
 shrinkDTermSp sp = nTermToD . shrinkNTermSp sp . dTermToN

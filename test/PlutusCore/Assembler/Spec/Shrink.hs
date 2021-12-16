@@ -6,27 +6,28 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
-module PlutusCore.Assembler.Spec.Shrink ( tests , prettyPrintTerm) where
+module PlutusCore.Assembler.Spec.Shrink ( makeTests , prettyPrintTerm) where
 
 import           Control.Monad                            (filterM, mapM, (>=>))
 import           Data.Either                              (rights)
-import           Data.List                                (lookup, zip)
-import           Data.Maybe                               (fromJust)
+import           Data.Functor                             ((<&>))
+import           Data.List                                (zip)
 import           System.Directory                         (doesFileExist,
                                                            listDirectory)
 import           System.FilePath                          ((</>))
 
 import           Plutus.V1.Ledger.Scripts                 (Script (..))
---import qualified Plutus.V1.Ledger.Scripts                 as Scripts
 import qualified PlutusCore                               as PLC
 import           PlutusCore.Assembler.AnnDeBruijn         (annDeBruijn)
 import           PlutusCore.Assembler.Assemble            (parseProgram)
 import           PlutusCore.Assembler.Desugar             (desugar)
 import           PlutusCore.Assembler.Prelude
-import           PlutusCore.Assembler.Shrink              (NTerm, SafeTactic,
-                                                           Tactic, dTermToN,
+import           PlutusCore.Assembler.Shrink              (DTerm, NTerm,
+                                                           SafeTactic, Tactic,
+                                                           dTermToN,
                                                            defaultShrinkParams,
-                                                           safeTactics, size,
+                                                           safeTactics,
+                                                           shrinkDTerm, size,
                                                            tactics)
 import           PlutusCore.Assembler.Spec.Gen            (genUplc)
 import           PlutusCore.Assembler.Spec.Prelude
@@ -36,54 +37,56 @@ import           PlutusCore.Evaluation.Machine.ExBudget   (ExBudget (..),
                                                            ExRestrictingBudget (..))
 import           PlutusCore.Name                          (Name)
 import qualified UntypedPlutusCore.Core.Type              as UPLC
---import           UntypedPlutusCore.DeBruijn               (Index (..))
 import           UntypedPlutusCore.Evaluation.Machine.Cek
 
 import           Data.Text                                (pack)
 import           Hedgehog                                 (MonadTest, annotate,
                                                            failure, success)
-import qualified Hedgehog.Gen                             as Gen
 import           PlutusCore.Evaluation.Machine.ExMemory   (ExCPU (..),
                                                            ExMemory (..))
+import           Test.Tasty                               (localOption)
+import           Test.Tasty.Hedgehog                      (HedgehogTestLimit (HedgehogTestLimit))
 
 type Result = Either
   (CekEvaluationException DefaultUni DefaultFun)
   (UPLC.Term Name DefaultUni DefaultFun ())
 
-tests :: TestTree
-tests =
-  testGroup "shrinking tactics" (
+makeTests :: IO TestTree
+makeTests = do
+  unitTests <- makeUnitTests
+  return $ testGroup "shrinking tactics" (
      [ testGroup tactName [ testSafeTactic tactName tact , testSafeTacticShrinks tact ]
        | (tactName,tact) <- safeTactics defaultShrinkParams ] ++
      [ testGroup tactName [ testTactic     tactName tact ]
        | (tactName,tact) <- tactics     defaultShrinkParams ] ++
-     [ exampleUnitTests ]
+     [ localOption (HedgehogTestLimit (Just 1)) unitTests ]
                                 )
 
 data TacticType = Safe | Unsafe deriving Show
 
-exampleUnitTests :: TestTree
-exampleUnitTests = testProperty "tactics don't break examples (generally a slow test)" . property $ do
-  examples' <- liftIO $ fmap ("./examples" </>) <$> listDirectory "./examples"
-  unitTests <- liftIO $ fmap ("./examples/unitTests" </>) <$> listDirectory "./examples/unitTests"
-  examples  <- liftIO $ filterM doesFileExist (examples' ++ unitTests)
-  srcs     <- liftIO $ mapM (fmap pack . readFile) examples
+makeUnitTests :: IO TestTree
+makeUnitTests = do
+  examples' <-  fmap ("./examples" </>) <$> listDirectory "./examples"
+  unitTests <-  fmap ("./examples/unitTests" </>) <$> listDirectory "./examples/unitTests"
+  examples  <-  filterM doesFileExist (examples' ++ unitTests)
+  srcs      <-  mapM (fmap pack . readFile) examples
   let uplcs' = rights [ (name,) <$> ( parseProgram name >=> (fmap Script . desugar . annDeBruijn) $ src )
                       | (name,src) <- zip examples srcs ]
       uplcs  = [(name,uplc) | (name,Script (UPLC.Program _ _ uplc)) <- uplcs' ]
-  (exampleName,uplc) <- forAll $ Gen.choice (return <$> uplcs)
-  (tactName,tact) <- forAll (Gen.choice (return <$> [Safe,Unsafe])) >>= \case
-    Unsafe -> do
-      tactName <- forAll $ Gen.choice [ return name | (name,_) <- tactics defaultShrinkParams ]
-      let tact = fromJust $ lookup tactName (tactics defaultShrinkParams)
-      return (tactName,tact)
-    Safe -> do
-      tactName <- forAll $ Gen.choice [ return name | (name,_) <- safeTactics defaultShrinkParams ]
-      let tact = fromJust $ lookup tactName (safeTactics defaultShrinkParams)
-      return (tactName,return . tact)
+  return $ testGroup "Unit tests" $ (fullTest <$> uplcs) ++ ( do
+    (name,uplc) <- uplcs
+    (tactName,tact) <- [Safe,Unsafe] >>= \case
+        Unsafe -> tactics     defaultShrinkParams
+        Safe   -> safeTactics defaultShrinkParams <&> second (return .)
+    return $ testProperty ("testing " ++ tactName ++ " on " ++ name) . property $ do
+      testTacticOn tactName tact (dTermToN uplc)
+                                                            )
 
-  annotate $ exampleName ++ " was broken by " ++ tactName
-  testTacticOn tactName tact (dTermToN uplc)
+fullTest :: (String,DTerm) -> TestTree
+fullTest (name,uplc) = testProperty ("full test of shrink on " ++ name) . property $ do
+  let uplc' = shrinkDTerm uplc
+  assert $ run (dTermToN uplc) ~= run (dTermToN uplc')
+
 
 testTacticOn :: MonadTest m => String -> Tactic -> NTerm -> m ()
 testTacticOn tactName tact uplc = do

@@ -18,7 +18,9 @@ import qualified PlutusCore.Assembler.Spec.TokenizeSpec    as Tokenize
 
 
 main :: IO ()
-main = defaultMain tests
+main = do
+  shrinkTests <- Shrink.makeTests
+  defaultMain (tests shrinkTests)
 
 
 -- Number of successful tests for each Hedgehog property.
@@ -26,15 +28,15 @@ limit :: HedgehogTestLimit
 limit = HedgehogTestLimit (Just 1000)
 
 
-tests :: TestTree
-tests =
+tests :: TestTree -> TestTree
+tests shrinkTests =
   localOption limit $
     testGroup "main"
       [ testGroup "pluto"
           [ AnnDeBruijn.tests
           , Parse.tests
           , Tokenize.tests
-          , Shrink.tests
+          , shrinkTests
           ]
       , testGroup "example"
           [ Examples.tests
