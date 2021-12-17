@@ -7,7 +7,7 @@
 [Herc badge]: https://img.shields.io/badge/ci--by--hercules-green.svg
 [Herc link]: https://hercules-ci.com/github/Plutonomicon/pluto 
 [Cachix badge]: https://img.shields.io/badge/cachix-plutonomicon--pluto-blue.svg
-[Cachix link]: https://plutonomicon-pluto.cachix.org
+[Cachix link]: https://public-plutonomicon.cachix.org
 [Built with Nix badge]: https://builtwithnix.org/badge.svg
 [Built with Nix link]: https://builtwithnix.org
 
