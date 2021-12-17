@@ -26,6 +26,11 @@ module PlutusCore.Assembler.Shrink
   ,safeTactics
   ,size
   ,stepShrink
+  -- Debuging
+  ,weakUnsubs
+  ,subTerms
+  ,equiv
+  ,Term(..)
               )where
 
 
@@ -40,7 +45,7 @@ import           Control.Monad.State          (MonadState, State, StateT,
 import           Data.ByteString.Lazy         (toStrict)
 import           Data.Function                (on)
 import           Data.Functor                 ((<&>))
-import           Data.Functor.Identity        (runIdentity)
+import           Data.Functor.Identity        (Identity (Identity), runIdentity)
 import           Data.List                    (and, elem, filter, foldr, group,
                                                groupBy, maximum, notElem,
                                                sortOn)
@@ -182,9 +187,6 @@ shrinkDTerm = shrinkDTermSp defaultShrinkParams
 shrinkDTermSp :: ShrinkParams -> DTerm -> DTerm
 shrinkDTermSp sp = nTermToD . shrinkNTermSp sp . dTermToN
 
---shrinkNTerm :: NTerm -> NTerm
---shrinkNTerm = shrinkNTermSp defaultShrinkParams
-
 shrinkNTermSp :: ShrinkParams -> NTerm -> NTerm
 shrinkNTermSp sp = runShrink (extraSteps sp) sp . return
 
@@ -200,11 +202,11 @@ runShrink es sp !terms
 
 stepShrink :: ShrinkParams -> [NTerm] -> [NTerm]
 stepShrink sp terms = let
-  terms' = fmap (foldl (.) id (snd <$> safeTactics sp)) terms
   cands = do
     tacts <- replicateM (fromIntegral $ parallelTactics sp) (snd <$> tactics sp)
-    foldl (>>=) terms' tacts
-  sizedCands = [(size c,c) | c <- cands ]
+    foldl (>>=) terms tacts
+  cands' = foldl (.) id (snd <$> safeTactics sp) <$> cands
+  sizedCands = [(size c,c) | c <- cands' ]
   batches = groupBy ((==) `on` fst) . sortOn fst $ sizedCands
   uniques = concat $ fmap head . group . sortOn (show . snd) <$> batches
   in take (fromIntegral $ parallelTerms sp) (snd <$> uniques)
@@ -218,7 +220,7 @@ sizeD = scriptSize . Script . Program () (Version () 0 0 0)
 defaultShrinkParams :: ShrinkParams
 defaultShrinkParams = ShrinkParams
   { safeTactics = [("removeDeadCode",removeDeadCode),("clean pairs",cleanPairs)]
-  , tactics = [("subs",subs),("unsubs",unsubs),("curry",uplcCurry),("strongUnsubs",strongUnsubs)]
+  , tactics = [("subs",subs),("weakUnsubs",weakUnsubs),("curry",uplcCurry),("strongUnsubs",strongUnsubs)]
   , parallelTactics = 1
   , parallelTerms = 20
   , extraSteps = 5
@@ -254,23 +256,12 @@ descend tact = \case
 addNameToScope :: MonadReader (Scope,Scope) m => Name -> m a -> m a
 addNameToScope name = local $ second (S.insert name)
 
--- TODO rewrite this in terms of completeRecScope
 completeRec :: (NTerm -> Maybe NTerm) -> NTerm -> NTerm
-completeRec partial originalTerm = let
-  rec = completeRec partial
-    in case partial originalTerm of
-      Just term -> term
-      Nothing ->
-        case originalTerm of
-          LamAbs _ name term -> LamAbs () name (rec term)
-          Apply  _ f x       -> Apply  () (rec f) (rec x)
-          Force  _ term      -> Force  () (rec term)
-          Delay  _ term      -> Delay  () (rec term)
-          term               -> term
+completeRec partial = runIdentity . completeRecM (Identity . partial)
 
-completeRecScope :: (NTerm -> ScopeM (Maybe NTerm)) -> NTerm -> ScopeM NTerm
-completeRecScope partial originalTerm = let
-  rec = completeRecScope partial
+completeRecM :: Monad m => (NTerm -> m (Maybe NTerm)) -> NTerm -> m NTerm
+completeRecM partial originalTerm = let
+  rec = completeRecM partial
     in partial originalTerm >>= \case
       Just term -> return term
       Nothing ->
@@ -305,7 +296,9 @@ whnf' 0 = const Unclear
 whnf' n = let
   rec = whnf' (n-1)
     in \case
-  Var{} -> Unclear
+  Var{} -> Safe
+  -- While Vars can be bound to error
+  -- that lambda will throw an error first so this is safe
   LamAbs{} -> Safe
   Apply _ (LamAbs _ name lTerm) valTerm ->
     case rec valTerm of
@@ -445,8 +438,8 @@ subs = completeTactic $ \case
           Err     -> return $ Just [Error ()]
       _ -> return Nothing
 
-unsubs :: Tactic
-unsubs = completeTactic $ \case
+weakUnsubs :: Tactic
+weakUnsubs = completeTactic $ \case
   Apply () funTerm varTerm -> let
     fSubterms = subTerms funTerm
     vSubterms = subTerms varTerm
@@ -475,10 +468,10 @@ strongUnsubs = completeTactic $ \case
         vSubterm <- vSubterms
         return $ do
           (template,nodes,holes) <- weakEquiv fSubterm vSubterm
-          guard $ nodes > 3 -- any less than this is probably unproductive to work with
+          guard $ nodes > 0 -- 0 node holes are just wholy disimilar terms
           name <- newName
-          funTerm' <- liftScope $ withTemplate name (template,holes) (snd fSubterm)
-          varTerm' <- liftScope $ withTemplate name (template,holes) (snd vSubterm)
+          funTerm' <- liftScope $ withTemplate name (template,holes) funTerm
+          varTerm' <- liftScope $ withTemplate name (template,holes) varTerm
           let templateArg = makeLambs holes template
           return $ Apply ()
             (
@@ -500,7 +493,7 @@ makeLambs = flip $ foldr (LamAbs ())
 
 
 withTemplate :: Name -> (NTerm,[Name]) -> NTerm -> ScopeM NTerm
-withTemplate templateName (template,holes) = completeRecScope $ \target -> do
+withTemplate templateName (template,holes) = completeRecM $ \target -> do
   args <- findHoles holes template target
   return $ applyArgs (Var () templateName) . M.elems <$> args
 
@@ -539,7 +532,7 @@ uplcCurry = completeTactic $ \case
       n1 <- newName
       n2 <- newName
       let newTerm =  cleanPairs $ appBind name (Apply () (Apply () (Builtin () MkPairData) (Var () n1)) (Var () n2)) term
-      return $ Just [ Apply () (LamAbs () n1 (Apply () (LamAbs () n2 newTerm) pairFst)) pairSnd ]
+      return $ Just [ Apply () (LamAbs () n2 (Apply () (LamAbs () n1 newTerm) pairFst)) pairSnd ]
   _ -> return Nothing
 
 -- Safe Tactics
@@ -570,12 +563,15 @@ cleanPairs = completeRec $ \case
 
 removeDeadCode :: SafeTactic
 removeDeadCode = completeRec $ \case
-  (Apply _ (LamAbs _ name term) val) ->
+ (Apply _ (LamAbs _ name term) (Var _ name')) ->
+   Just $ subName' name name' term
+   -- subName' is used because name colision is intended in this case
+ (Apply _ (LamAbs _ name term) val) ->
     case whnf val of
         Safe -> if mentions name term
            then Nothing
            else Just term
         Unclear -> Nothing
         Err -> Just $ Error ()
-  _ -> Nothing
+ _ -> Nothing
 

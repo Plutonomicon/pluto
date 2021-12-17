@@ -6,12 +6,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
-module PlutusCore.Assembler.Spec.Shrink ( makeTests , prettyPrintTerm) where
+module PlutusCore.Assembler.Spec.Shrink ( fromFile ,makeTests , prettyPrintTerm) where
 
 import           Control.Monad                            (filterM, mapM, (>=>))
 import           Data.Either                              (rights)
 import           Data.Functor                             ((<&>))
-import           Data.List                                (zip)
+import           Data.List                                (isInfixOf, zip)
 import           System.Directory                         (doesFileExist,
                                                            listDirectory)
 import           System.FilePath                          ((</>))
@@ -79,8 +79,26 @@ makeUnitTests = do
         Unsafe -> tactics     defaultShrinkParams
         Safe   -> safeTactics defaultShrinkParams <&> second (return .)
     return $ testProperty ("testing " ++ tactName ++ " on " ++ name) . property $ do
+      when (('/':tactName) `isInfixOf` name) $ testNonTrivial tact (dTermToN uplc)
       testTacticOn tactName tact (dTermToN uplc)
                                                             )
+
+fromFile :: String -> IO DTerm
+fromFile path = do
+  src <- pack <$> readFile path
+  case parseProgram path >=> (fmap Script . desugar . annDeBruijn) $ src of
+    Left e                                 -> error $ show e
+    Right (Script (UPLC.Program _ _ uplc)) -> return uplc
+
+testNonTrivial :: MonadTest m => Tactic -> NTerm -> m ()
+testNonTrivial tact term = case tact term of
+                             [] -> do
+                               annotate "tactic returns []"
+                               failure
+                             [term'] -> do
+                               annotate "tactic is trivial"
+                               assert $ term /= term'
+                             (_:_) -> success
 
 fullTest :: (String,DTerm) -> TestTree
 fullTest (name,uplc) = testProperty ("full test of shrink on " ++ name) . property $ do
