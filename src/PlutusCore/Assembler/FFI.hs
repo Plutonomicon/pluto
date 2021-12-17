@@ -14,7 +14,9 @@ module PlutusCore.Assembler.FFI
 import           Data.Data                      (Data, cast)
 import qualified Data.Text                      as T
 import           Language.Haskell.TH
-import           Language.Haskell.TH.Syntax     (Lift (lift), dataToExpQ)
+import           Language.Haskell.TH.Syntax     (Lift (lift),
+                                                 Quasi (qAddDependentFile),
+                                                 dataToExpQ)
 import           PlutusCore.Assembler.App       (Error (ErrorParsing))
 import qualified PlutusCore.Assembler.Assemble  as Assemble
 import qualified PlutusCore.Assembler.Evaluate  as E
@@ -25,8 +27,9 @@ import           System.IO                      (FilePath)
 
 -- | Embed the AST of a Pluto program into the current module.
 load :: FilePath -> Q Exp
-load =
-  liftDataWithText <=< loadPlutoMod
+load scriptPath = do
+  qAddDependentFile scriptPath
+  liftDataWithText <=< loadPlutoMod $ scriptPath
   where
     loadPlutoMod :: (MonadIO m, MonadFail m) => FilePath -> m (AST.Program ())
     loadPlutoMod fp = do
@@ -82,13 +85,18 @@ simpleD name type_ bodyF = do
   where
     lambdaArgsFromType :: Type -> Q [Name]
     lambdaArgsFromType = \case
+      -- a
       ConT _ -> do
         pure []
-      AppT (AppT ArrowT (ConT _)) rest -> do
+      -- [a]
+      AppT ListT _ -> do
+        pure []
+      -- a -> b
+      AppT (AppT ArrowT _) rest -> do
         n <- newName "_arg"
         (n :) <$> lambdaArgsFromType rest
-      _ ->
-        fail "simpleD: unexpected type"
+      t ->
+        fail $ "simpleD: unexpected type " <> show t
 
 -- | Like `liftData` but `Data.Text`-friendly.
 --

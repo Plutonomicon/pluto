@@ -1,0 +1,62 @@
+let 
+  fix = (\f -> (\x -> f (\v -> x x v)) (\x -> f (\v -> x x v)));
+  compose = (\f g x -> f (g x));
+
+  -- Tracing.
+  trace = (\s a -> ! Trace s a);
+  traceIfTrue = (\s a -> if a then ! Trace s a else a);
+  traceIfFalse = (\s a -> if a then a else ! Trace s a);
+
+  -- List utilities.
+  null = (\x -> ! NullList x);
+  cons = (\x xs -> ! MkCons x xs);
+  nil = UnListData (data []);
+  head = (\x -> trace "Head" (! HeadList x));
+  tail = (\x -> trace "Tail" (! TailList x));
+  -- | atIndex :: Int -> [a] -> a
+  atIndex = 
+    fix
+      (\atIndex i xs ->
+        if null xs 
+          then ()
+          else
+            if i `EqualsInteger` 0 
+              then head xs
+              else atIndex (i `SubtractInteger` 1) (tail xs)
+      );
+  -- | hasElem :: Data -> [Data] -> Bool
+  hasElem =
+    (\x -> fix (\hasElem xs -> 
+      if null xs
+        then trace "hasElem: empty" False
+        else
+          if (trace "hasElem: eq" (EqualsData x (head xs)))
+            then True 
+            else hasElem (tail xs)
+    ));
+
+  -- Pair utilities.
+  fst = (\x -> ! ! FstPair x);
+  snd = (\x -> ! ! SndPair x);
+
+  -- Product type utilities.
+  -- | For `data Some = Some { foo :: Int, bar :: Bool }`,
+  -- products _ = [data Int, data Bar]
+  products = (\x -> ! ! SndPair (UnConstrData x));
+  -- | Get the nth field of a product.
+  atProduct = (\i x -> atIndex i (products x))
+in 
+  -- | () -> PubKeyHash -> ScriptContext -> ()
+  (\pkh _ ctx -> 
+    let 
+      -- | txInfo :: TxInfo
+      txInfo = atProduct 0 ctx;
+      -- | txInfoSignatories :: [PubKeyHash]
+      txInfoSignatories = UnListData (atProduct 7 txInfo);
+      isBeneficiary = hasElem pkh txInfoSignatories
+    in 
+      (if "beneficiary's sig missing" `traceIfFalse` isBeneficiary
+        then () 
+        else Error ()
+      )
+  )

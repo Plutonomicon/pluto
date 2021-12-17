@@ -1,5 +1,17 @@
 # `pluto`
 
+[![Hercules-ci][Herc badge]][Herc link]
+[![Cachix Cache][Cachix badge]][Cachix link]
+[![Built with Nix][Built with Nix badge]][Built with Nix link]
+
+[Herc badge]: https://img.shields.io/badge/ci--by--hercules-green.svg
+[Herc link]: https://hercules-ci.com/github/Plutonomicon/pluto 
+[Cachix badge]: https://img.shields.io/badge/cachix-plutonomicon--pluto-blue.svg
+[Cachix link]: https://plutonomicon-pluto.cachix.org
+[Built with Nix badge]: https://builtwithnix.org/badge.svg
+[Built with Nix link]: https://builtwithnix.org
+
+
 ## The Plutus Core assembler
 
 `pluto` is a programming language which is essentially [Untyped Plutus Core](https://iohk.io/en/blog/posts/2021/02/02/plutus-tx-compiling-haskell-into-plutus-core/) (UPLC) with a little bit of syntactic sugar. `pluto` is written in a Haskell-like human-friendly syntax. UPLC is an untyped lambda calculus with strict evaluation semantics.
@@ -262,6 +274,16 @@ To only assemble the Pluto program into a Plutus bytecode:
 cabal run pluto -- assemble examples/hello.pluto
 ```
 
+#### Sample Contract
+
+See `examples/contracts/sample` for the sample "gift" contract, written in both Haskell and Pluto. This example includes QuickCheck ContractModel tests to test the contract using both Haskell and Pluto version. It demonstrates how to unpack `ScriptContext` in Pluto.
+
+To run the sample contract tests,
+
+```
+cabal run pluto-sample-contract
+```
+
 ### Haskell FFI 
 
 Pluto programs can be accessed and evaluated (via Plutus Core) from Haskell code as follows:
@@ -281,3 +303,28 @@ $(FFI.bind 'hello
 ```
 
 The above exposes the two top-level bindings from the hello.pluto program, using the given type declaration. 
+
+### Working with Plutus `Data`
+
+The `data` keyword can be used to create lists, maps, and sigma types. For example:
+
+```lisp
+let 
+  x = data [1, 2, 3]
+in 
+  x
+```
+
+Plutus provides a number of builtins to work with `Data`. For operating on lists, we have:
+
+- `UnListData :: Data -> [Data]` (fails if the Data is not a list)
+- `HeadList :: [a] -> a` (fails if list is empty)
+- `TailList :: [a] -> [a]`
+- `ChooseList` can be used to "case" on lists
+
+Higher-level operations on lists can be written in Pluto itself. For example, `fibonacci.pluto` and `sum.pluto` defines "fold".
+
+```
+$ cabal run pluto -- run examples/fibonacci.pluto 5
+Constant () (Some (ValueOf data (List [I 8,I 5,I 3,I 2,I 1,I 1,I 0])))
+```

@@ -39,7 +39,8 @@ evalWithArgs args =
 -- | Like `evalTopLevelBinding`, but expects the result to be a Haskell value.
 evalToplevelBindingToHaskellValueMust :: (H.FromUPLC a, HasCallStack) => AST.Name -> [AST.Term ()] -> AST.Program () -> a
 evalToplevelBindingToHaskellValueMust name args prog =
-  processResult $ evalToplevelBinding name args prog
+  let getRes (_, _, res) = res
+  in processResult $ getRes <$> evalToplevelBinding name args prog
   where
     processResult :: (H.FromUPLC a, HasCallStack) => Either Error (Term Name DefaultUni DefaultFun ()) -> a
     processResult = \case
@@ -47,16 +48,14 @@ evalToplevelBindingToHaskellValueMust name args prog =
         error $ show err
       Right t ->
         case H.fromUPLC t of
-          Nothing -> error "processResult: failed to convert term"
+          Nothing -> error $ "processResult: failed to convert term: " <> show t
           Just x  -> x
 
-evalToplevelBinding :: AST.Name -> [AST.Term ()] -> AST.Program () -> Either Error (Term Name DefaultUni DefaultFun ())
+evalToplevelBinding :: AST.Name -> [AST.Term ()] -> AST.Program () -> Either Error (ExBudget, [Text], Term Name DefaultUni DefaultFun ())
 evalToplevelBinding name args prog = do
   prog' <- liftError ErrorOther $ applyToplevelBinding name args prog
-  (_, _, res) <-
-    liftError ErrorEvaluating . eval
+  liftError ErrorEvaluating . eval
       =<< liftError ErrorAssembling (Assemble.translate prog')
-  pure res
 
 -- | Return a new program that applies a bound lambda with the given arguments
 --
