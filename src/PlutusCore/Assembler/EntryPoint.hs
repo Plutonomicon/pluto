@@ -40,6 +40,7 @@ newtype Verbose = Verbose Bool
 
 data Command
   = CommandAssemble
+    Bool --shrinking
     (Maybe InputFilePath)
     (Maybe OutputFilePath)
   | CommandRun
@@ -60,6 +61,8 @@ outputFilePath :: O.Parser (Maybe OutputFilePath)
 outputFilePath =
   O.argument (Just . OutputFilePath <$> O.str) (O.metavar "OUTPUT" <> O.value Nothing <> O.help "The output file path: defaults to stdout")
 
+shrinking :: O.Parser Bool
+shrinking = O.switch (O.long "shrinking" <> O.short 's' <> O.help "Shrink the uplc before serializing (only affect the assemble command)")
 
 command :: O.Parser (Command, Verbose)
 command = do
@@ -69,11 +72,13 @@ command = do
       O.command "eval" (O.info runBindingP (O.progDesc "Evaluate a let binding in the program"))
     ]
   verbose <- Verbose <$> O.switch (O.long "verbose" <> O.short 'v' <> O.help "Dump ASTs along the way")
+  _ <- shrinking --TODO is it possible to make this a proper sub-option of assemble?
   pure (cmd, verbose)
   where
     assembleP =
       CommandAssemble
-      <$> inputFilePath
+      <$> shrinking
+      <*> inputFilePath
       <*> outputFilePath
     runP =
       CommandRun
@@ -105,8 +110,8 @@ commandInfo =
 runCommand :: forall m. (MonadIO m, MonadError Error m) => Command -> Verbose -> m ()
 runCommand cmd (Verbose verbose) = do
   case cmd of
-    CommandAssemble mInPath mOutPath -> do
-      bin <- assembleInput mInPath
+    CommandAssemble andShrink mInPath mOutPath -> do
+      bin <- assembleInput andShrink mInPath
       writeObjectCode mOutPath bin
     CommandRun mInPath args -> do
       ast <- parseInput mInPath
@@ -131,9 +136,9 @@ runCommand cmd (Verbose verbose) = do
     parseInput mInPath = do
       text <- liftIO $ getSourceCode mInPath
       liftError ErrorParsing $ Assemble.parseProgram (maybe "<stdin>" getInputFilePath mInPath) text
-    assembleInput mInPath = do
+    assembleInput andShrink mInPath = do
       text <- liftIO $ getSourceCode mInPath
-      liftError ErrorAssembling $ Assemble.assemble (maybe "<stdin>" getInputFilePath mInPath) text
+      liftError ErrorAssembling $ (if andShrink then Assemble.assembleAndShrink else Assemble.assemble) (maybe "<stdin>" getInputFilePath mInPath) text
     logEvalResult (exBudget, traces, res) = do
       logHeader "ExBudget"
       liftIO $ print exBudget

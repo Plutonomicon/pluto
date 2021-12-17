@@ -18,7 +18,7 @@ import qualified PlutusCore.Assembler.Types.AST    as AST
 import qualified PlutusCore.Data                   as PLC
 import           PlutusTx                          (toBuiltinData)
 import           PlutusTx.Builtins                 (BuiltinData)
-import           Prelude                           (Foldable (sum), head, tail,
+import           Prelude                           (Foldable (sum), tail,
                                                     toInteger)
 
 -- FFIs must be declared before tests

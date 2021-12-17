@@ -398,6 +398,8 @@ weakEquiv' = curry $ \case
   (l,r)
     | l == r    -> return (l,1,[])
     | otherwise -> do
+        guard $ whnf l == Safe
+        guard $ whnf r == Safe
         holeName <- newName
         return (Var () holeName,1,[holeName])
 
@@ -494,8 +496,12 @@ makeLambs = flip $ foldr (LamAbs ())
 
 withTemplate :: Name -> (NTerm,[Name]) -> NTerm -> ScopeM NTerm
 withTemplate templateName (template,holes) = completeRecM $ \target -> do
-  args <- findHoles holes template target
-  return $ applyArgs (Var () templateName) . M.elems <$> args
+  margs <- findHoles holes template target
+  return $ do
+    mapArgs <- margs
+    let args = M.elems mapArgs
+    guard $ all (== Safe) (whnf <$> args) 
+    return $ applyArgs (Var () templateName) args
 
 findHoles :: [Name] -> NTerm -> NTerm -> ScopeM (Maybe (Map Name NTerm))
 findHoles holes template subTerm
