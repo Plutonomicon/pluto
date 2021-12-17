@@ -500,7 +500,7 @@ withTemplate templateName (template,holes) = completeRecM $ \target -> do
   return $ do
     mapArgs <- margs
     let args = M.elems mapArgs
-    guard $ all (== Safe) (whnf <$> args) 
+    guard $ all (== Safe) (whnf <$> args)
     return $ applyArgs (Var () templateName) args
 
 findHoles :: [Name] -> NTerm -> NTerm -> ScopeM (Maybe (Map Name NTerm))
