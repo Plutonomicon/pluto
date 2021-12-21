@@ -9,7 +9,7 @@ maintainer:    morgan.thomas@platonic.systems
 data-files:
   examples/**/*.pluto
 extra-source-files:
-  examples/contract/sample/validator.pluto
+  examples/contracts/sample/validator.pluto
 
 library
   exposed-modules:
