@@ -9,7 +9,7 @@ import           Data.Either.Extra                       (mapLeft)
 import           Data.Text                               (pack, unpack)
 import qualified PlutusCore.Data                         as Data
 import           Text.Parsec                             (Parsec, SourceName,
-                                                          SourcePos,
+                                                          SourcePos, eof,
                                                           getPosition, many,
                                                           many1, option, try)
 import           Text.Parsec.Prim                        (token)
@@ -76,7 +76,10 @@ consumeVar =
 
 
 program :: Parser (Program SourcePos)
-program = AST.Program <$> term
+program = do
+  p <- AST.Program <$> term
+  eof
+  return p
 
 
 term :: Parser (Term SourcePos)
