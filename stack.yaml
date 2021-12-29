@@ -187,13 +187,10 @@ extra-deps:
   commit: ff17e42be4ede4ff9711634f1b924ca1de90851a
   subdirs:
   - freer-extras
-  - playground-common
   - plutus-chain-index
   - plutus-chain-index-core
   - plutus-contract
   - plutus-ledger
-  - plutus-pab
-  - plutus-playground-server
   - plutus-use-cases
   - quickcheck-dynamic
   - web-ghc
