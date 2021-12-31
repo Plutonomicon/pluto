@@ -19,6 +19,7 @@ import           System.IO                               (FilePath, getContents,
                                                           print, stdout)
 
 import qualified Data.Bifunctor                          as Bifunctor
+import           Data.List.NonEmpty                      (nonEmpty)
 import qualified Data.Text                               as T
 import qualified Plutus.V1.Ledger.Scripts                as Scripts
 import           PlutusCore.Assembler.App
@@ -118,21 +119,14 @@ runCommand cmd (Verbose verbose) = do
         logShower $ Scripts.unScript prog
         logHeader "UPLC (pretty)"
         logInfo $ Pretty.display $ Scripts.unScript prog
-      (exBudget, traces, res) <- liftError ErrorEvaluating $
+      evalRes <- liftError ErrorEvaluating $
         Evaluate.evalWithArgs args prog
-      when verbose $ do
-        logHeader "ExBudget"
-        liftIO $ print exBudget
-        logHeader "Script traces"
-        forM_ traces $ \trace ->
-          logInfo trace
-        logHeader "Script result"
-      liftIO $ print res
+      logEvalResult evalRes
     CommandEval mInPath name args -> do
-      res <-
+      evalRes <-
         either throwError pure . Evaluate.evalToplevelBinding name args . void
           =<< parseInput mInPath
-      liftIO $ print res
+      logEvalResult evalRes
   where
     parseInput mInPath = do
       text <- liftIO $ getSourceCode mInPath
@@ -140,6 +134,17 @@ runCommand cmd (Verbose verbose) = do
     assembleInput mInPath = do
       text <- liftIO $ getSourceCode mInPath
       liftError ErrorAssembling $ Assemble.assemble (maybe "<stdin>" getInputFilePath mInPath) text
+    logEvalResult (exBudget, traces, res) = do
+      logHeader "ExBudget"
+      liftIO $ print exBudget
+      case nonEmpty traces of
+        Nothing -> pure ()
+        Just traces' -> do
+          logHeader "Traces"
+          forM_ traces' $ \trace -> do
+            logInfo trace
+      logHeader "Result"
+      liftIO $ print res
 
 
 getSourceCode :: MonadIO m => Maybe InputFilePath -> m Text
