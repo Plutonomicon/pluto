@@ -10,13 +10,13 @@
 module PlutusCore.Assembler.EntryPoint (main)  where
 
 
-import           Data.Text                               (pack, unpack)
+import           Data.ByteString                         (hPut, writeFile)
+import           Data.Text                               (pack)
 import qualified Options.Applicative                     as O
 import           System.Exit                             (ExitCode (ExitFailure),
                                                           exitWith)
 import           System.IO                               (FilePath, getContents,
-                                                          print, writeFile)
-import           Text.Hex                                (encodeHex)
+                                                          print, stdout)
 
 import qualified Data.Bifunctor                          as Bifunctor
 import           Data.List.NonEmpty                      (nonEmpty)
@@ -154,9 +154,9 @@ getSourceCode (Just (InputFilePath path)) = pack <$> liftIO (readFile path)
 
 writeObjectCode :: MonadIO m => Maybe OutputFilePath -> ByteString -> m ()
 writeObjectCode (Just (OutputFilePath path)) bs =
-  liftIO $ writeFile path (unpack (encodeHex bs))
+  liftIO $ writeFile path bs
 writeObjectCode Nothing bs =
-  logInfo $ encodeHex bs
+  liftIO $ hPut stdout bs
 
 
 main :: IO ()
