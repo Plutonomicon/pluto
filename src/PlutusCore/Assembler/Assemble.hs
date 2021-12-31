@@ -16,8 +16,8 @@ import           PlutusCore.Assembler.Tokenize           (tokenize)
 import           PlutusCore.Assembler.Types.AST          (Program)
 import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage)
 import qualified PlutusCore.Data                         as PLC
-import           Text.Parsec.Pos                         (SourceName, SourcePos)
 import           Shrink                                  (shrinkScript)
+import           Text.Parsec.Pos                         (SourceName, SourcePos)
 
 
 -- | Either assemble the given code into Plutus bytecode or fail with an error message.
