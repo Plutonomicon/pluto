@@ -10,7 +10,7 @@
 module PlutusCore.Assembler.EntryPoint (main)  where
 
 
-import           Data.ByteString (writeFile, hPut)
+import           Data.ByteString                         (hPut, writeFile)
 import           Data.Text                               (pack)
 import qualified Options.Applicative                     as O
 import           System.Exit                             (ExitCode (ExitFailure),
