@@ -1,7 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 
-module PlutusCore.Assembler.Assemble (assemble, translate, parseProgram, parsePlutusData) where
+module PlutusCore.Assembler.Assemble (assemble, assembleAndShrink, translate, parseProgram, parsePlutusData) where
 
 
 import           Codec.Serialise                         (serialise)
@@ -17,12 +17,15 @@ import           PlutusCore.Assembler.Types.AST          (Program)
 import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage)
 import qualified PlutusCore.Data                         as PLC
 import           Text.Parsec.Pos                         (SourceName, SourcePos)
+import           Shrink                                  (shrinkScript)
 
 
 -- | Either assemble the given code into Plutus bytecode or fail with an error message.
 assemble :: SourceName -> Text -> Either ErrorMessage ByteString
 assemble name = fmap (toStrict . serialise) . translate <=< parseProgram name
 
+assembleAndShrink :: SourceName -> Text -> Either ErrorMessage ByteString
+assembleAndShrink name = fmap (toStrict . serialise . shrinkScript) . translate <=< parseProgram name
 
 -- | Translatre the given Pluto code into a Plutus Script
 translate :: Show ann => Program ann -> Either ErrorMessage Script

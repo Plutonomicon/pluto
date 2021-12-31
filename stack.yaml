@@ -196,5 +196,8 @@ extra-deps:
   - web-ghc
   # nix-sha256: sha256-u8gU/uQYNDA0KM6+hNI3Oo0qOfjBx04b30I/Zsbv2Pc=
 
+- git: https://github.com/Plutonomicon/Shrinker
+  commit: 110d28349d851bda3aefa2c13dba0a28b4c3a607
+
 
 allow-newer: true
