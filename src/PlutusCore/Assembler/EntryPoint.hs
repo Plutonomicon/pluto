@@ -38,15 +38,19 @@ newtype OutputFilePath = OutputFilePath { _getOutputFilePath :: FilePath }
 
 newtype Verbose = Verbose Bool
 
+type Shrinking = Bool
+
 data Command
   = CommandAssemble
-    Bool -- rather or not to use shrinker
+    Shrinking
     (Maybe InputFilePath)
     (Maybe OutputFilePath)
   | CommandRun
+    Shrinking
     (Maybe InputFilePath)
     [PLC.Data]
   | CommandEval
+    Shrinking
     (Maybe InputFilePath)
     AST.Name
     [AST.Term ()]
@@ -62,7 +66,7 @@ outputFilePath =
   O.argument (Just . OutputFilePath <$> O.str) (O.metavar "OUTPUT" <> O.value Nothing <> O.help "The output file path: defaults to stdout")
 
 shrinking :: O.Parser Bool
-shrinking = O.switch (O.long "shrinking" <> O.short 's' <> O.help "Shrink the uplc before serializing (only affects the assemble command)")
+shrinking = O.switch (O.long "shrinking" <> O.short 's' <> O.help "Shrink the uplc after assembly")
 
 command :: O.Parser (Command, Verbose)
 command = do
@@ -72,7 +76,7 @@ command = do
       O.command "eval" (O.info runBindingP (O.progDesc "Evaluate a let binding in the program"))
     ]
   verbose <- Verbose <$> O.switch (O.long "verbose" <> O.short 'v' <> O.help "Dump ASTs along the way")
-  _ <- shrinking --TODO is it possible to make this a proper sub-option of assemble?
+  _ <- shrinking 
   pure (cmd, verbose)
   where
     assembleP =
@@ -82,11 +86,13 @@ command = do
       <*> outputFilePath
     runP =
       CommandRun
-      <$> inputFilePath
+      <$> shrinking
+      <*> inputFilePath
       <*> O.many (O.argument dataReader (O.metavar "PLC.Data encoded"))
     runBindingP =
       CommandEval
-      <$> inputFilePath
+      <$> shrinking
+      <*> inputFilePath
       <*> fmap AST.Name (O.strArgument (O.metavar "BINDING" <> O.help "Name of the variable bound in the let block"))
       <*> O.many (O.argument termReader (O.metavar "ARG"))
     termReader :: O.ReadM (AST.Term ())
@@ -113,12 +119,16 @@ runCommand cmd (Verbose verbose) = do
     CommandAssemble shrink mInPath mOutPath -> do
       bin <- assembleInput shrink mInPath
       writeObjectCode mOutPath bin
-    CommandRun mInPath args -> do
+    CommandRun shrink mInPath args -> do
       ast <- parseInput mInPath
       when verbose $ do
         logHeader "AST"
         logShower $ void ast
-      prog <- liftError ErrorAssembling $ Assemble.translate ast
+      prog <- liftError ErrorAssembling $ 
+        (if shrink 
+            then Assemble.translateAndShrink 
+            else Assemble.translate
+        ) ast
       when verbose $ do
         logHeader "UPLC"
         logShower $ Scripts.unScript prog
@@ -127,9 +137,9 @@ runCommand cmd (Verbose verbose) = do
       evalRes <- liftError ErrorEvaluating $
         Evaluate.evalWithArgs args prog
       logEvalResult evalRes
-    CommandEval mInPath name args -> do
+    CommandEval shrink mInPath name args -> do
       evalRes <-
-        either throwError pure . Evaluate.evalToplevelBinding name args . void
+        either throwError pure . (if shrink then Evaluate.shrinkEvalToplevelBinding else Evaluate.evalToplevelBinding) name args . void
           =<< parseInput mInPath
       logEvalResult evalRes
   where

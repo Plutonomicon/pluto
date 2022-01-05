@@ -10,6 +10,7 @@ module PlutusCore.Assembler.Evaluate
   ( eval
   , evalWithArgs
   , evalToplevelBinding
+  , shrinkEvalToplevelBinding
   , evalToplevelBindingToHaskellValueMust
   ) where
 
@@ -52,10 +53,16 @@ evalToplevelBindingToHaskellValueMust name args prog =
           Just x  -> x
 
 evalToplevelBinding :: AST.Name -> [AST.Term ()] -> AST.Program () -> Either Error (ExBudget, [Text], Term Name DefaultUni DefaultFun ())
-evalToplevelBinding name args prog = do
+evalToplevelBinding = evalToplevelBinding' False
+
+shrinkEvalToplevelBinding :: AST.Name -> [AST.Term ()] -> AST.Program () -> Either Error (ExBudget, [Text], Term Name DefaultUni DefaultFun ())
+shrinkEvalToplevelBinding = evalToplevelBinding' True
+
+evalToplevelBinding' :: Bool -> AST.Name -> [AST.Term ()] -> AST.Program () -> Either Error (ExBudget, [Text], Term Name DefaultUni DefaultFun ())
+evalToplevelBinding' shrinking name args prog = do
   prog' <- liftError ErrorOther $ applyToplevelBinding name args prog
   liftError ErrorEvaluating . eval
-      =<< liftError ErrorAssembling (Assemble.translate prog')
+      =<< liftError ErrorAssembling ((if shrinking then Assemble.translateAndShrink else Assemble.translate) prog')
 
 -- | Return a new program that applies a bound lambda with the given arguments
 --
