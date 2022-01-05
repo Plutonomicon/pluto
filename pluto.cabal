@@ -50,8 +50,6 @@ library
     parsec,
     shower,
     template-haskell,
-    playground-common,
-    plutus-pab,
     plutus-core,
     plutus-contract,
     plutus-tx-plugin,
@@ -62,7 +60,8 @@ library
     tasty-hedgehog -any,
     cardano-api -any,
     serialise -any,
-    cardano-ledger-alonzo -any
+    cardano-ledger-alonzo -any,
+    shrinker
 
   hs-source-dirs: src
   default-language: Haskell2010
@@ -95,8 +94,6 @@ executable pluto
     mtl,
     optparse-applicative,
     parsec,
-    playground-common,
-    plutus-pab,
     plutus-core,
     plutus-contract,
     plutus-tx-plugin,
@@ -147,8 +144,6 @@ test-suite spec
     text -any,
     mtl,
     parsec,
-    playground-common,
-    plutus-pab,
     plutus-core,
     plutus-contract,
     plutus-tx-plugin,

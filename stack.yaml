@@ -187,17 +187,17 @@ extra-deps:
   commit: ff17e42be4ede4ff9711634f1b924ca1de90851a
   subdirs:
   - freer-extras
-  - playground-common
   - plutus-chain-index
   - plutus-chain-index-core
   - plutus-contract
   - plutus-ledger
-  - plutus-pab
-  - plutus-playground-server
   - plutus-use-cases
   - quickcheck-dynamic
   - web-ghc
   # nix-sha256: sha256-u8gU/uQYNDA0KM6+hNI3Oo0qOfjBx04b30I/Zsbv2Pc=
+
+- git: https://github.com/Plutonomicon/Shrinker
+  commit: b21779eae2b8c2e7b84baf821de76c6c34e46cfa
 
 
 allow-newer: true

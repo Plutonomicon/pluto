@@ -38,14 +38,19 @@ newtype OutputFilePath = OutputFilePath { _getOutputFilePath :: FilePath }
 
 newtype Verbose = Verbose Bool
 
+type Shrinking = Bool
+
 data Command
   = CommandAssemble
+    Shrinking
     (Maybe InputFilePath)
     (Maybe OutputFilePath)
   | CommandRun
+    Shrinking
     (Maybe InputFilePath)
     [PLC.Data]
   | CommandEval
+    Shrinking
     (Maybe InputFilePath)
     AST.Name
     [AST.Term ()]
@@ -60,6 +65,8 @@ outputFilePath :: O.Parser (Maybe OutputFilePath)
 outputFilePath =
   O.argument (Just . OutputFilePath <$> O.str) (O.metavar "OUTPUT" <> O.value Nothing <> O.help "The output file path: defaults to stdout")
 
+shrinking :: O.Parser Bool
+shrinking = O.switch (O.long "shrinking" <> O.short 's' <> O.help "Shrink the uplc after assembly")
 
 command :: O.Parser (Command, Verbose)
 command = do
@@ -69,19 +76,23 @@ command = do
       O.command "eval" (O.info runBindingP (O.progDesc "Evaluate a let binding in the program"))
     ]
   verbose <- Verbose <$> O.switch (O.long "verbose" <> O.short 'v' <> O.help "Dump ASTs along the way")
+  _ <- shrinking 
   pure (cmd, verbose)
   where
     assembleP =
       CommandAssemble
-      <$> inputFilePath
+      <$> shrinking
+      <*> inputFilePath
       <*> outputFilePath
     runP =
       CommandRun
-      <$> inputFilePath
+      <$> shrinking
+      <*> inputFilePath
       <*> O.many (O.argument dataReader (O.metavar "PLC.Data encoded"))
     runBindingP =
       CommandEval
-      <$> inputFilePath
+      <$> shrinking
+      <*> inputFilePath
       <*> fmap AST.Name (O.strArgument (O.metavar "BINDING" <> O.help "Name of the variable bound in the let block"))
       <*> O.many (O.argument termReader (O.metavar "ARG"))
     termReader :: O.ReadM (AST.Term ())
@@ -105,15 +116,19 @@ commandInfo =
 runCommand :: forall m. (MonadIO m, MonadError Error m) => Command -> Verbose -> m ()
 runCommand cmd (Verbose verbose) = do
   case cmd of
-    CommandAssemble mInPath mOutPath -> do
-      bin <- assembleInput mInPath
+    CommandAssemble shrink mInPath mOutPath -> do
+      bin <- assembleInput shrink mInPath
       writeObjectCode mOutPath bin
-    CommandRun mInPath args -> do
+    CommandRun shrink mInPath args -> do
       ast <- parseInput mInPath
       when verbose $ do
         logHeader "AST"
         logShower $ void ast
-      prog <- liftError ErrorAssembling $ Assemble.translate ast
+      prog <- liftError ErrorAssembling $ 
+        (if shrink 
+            then Assemble.translateAndShrink 
+            else Assemble.translate
+        ) ast
       when verbose $ do
         logHeader "UPLC"
         logShower $ Scripts.unScript prog
@@ -122,18 +137,18 @@ runCommand cmd (Verbose verbose) = do
       evalRes <- liftError ErrorEvaluating $
         Evaluate.evalWithArgs args prog
       logEvalResult evalRes
-    CommandEval mInPath name args -> do
+    CommandEval shrink mInPath name args -> do
       evalRes <-
-        either throwError pure . Evaluate.evalToplevelBinding name args . void
+        either throwError pure . (if shrink then Evaluate.shrinkEvalToplevelBinding else Evaluate.evalToplevelBinding) name args . void
           =<< parseInput mInPath
       logEvalResult evalRes
   where
     parseInput mInPath = do
       text <- liftIO $ getSourceCode mInPath
       liftError ErrorParsing $ Assemble.parseProgram (maybe "<stdin>" getInputFilePath mInPath) text
-    assembleInput mInPath = do
+    assembleInput shrink mInPath = do
       text <- liftIO $ getSourceCode mInPath
-      liftError ErrorAssembling $ Assemble.assemble (maybe "<stdin>" getInputFilePath mInPath) text
+      liftError ErrorAssembling $ (if shrink then Assemble.assembleAndShrink else Assemble.assemble) (maybe "<stdin>" getInputFilePath mInPath) text
     logEvalResult (exBudget, traces, res) = do
       logHeader "ExBudget"
       liftIO $ print exBudget

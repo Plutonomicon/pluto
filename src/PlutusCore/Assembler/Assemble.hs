@@ -1,7 +1,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 
-module PlutusCore.Assembler.Assemble (assemble, translate, parseProgram, parsePlutusData) where
+module PlutusCore.Assembler.Assemble (assemble, assembleAndShrink, translate, translateAndShrink, parseProgram, parsePlutusData) where
 
 
 import           Codec.Serialise                         (serialise)
@@ -16,6 +16,7 @@ import           PlutusCore.Assembler.Tokenize           (tokenize)
 import           PlutusCore.Assembler.Types.AST          (Program)
 import           PlutusCore.Assembler.Types.ErrorMessage (ErrorMessage)
 import qualified PlutusCore.Data                         as PLC
+import           Shrink                                  (shrinkScript)
 import           Text.Parsec.Pos                         (SourceName, SourcePos)
 
 
@@ -23,10 +24,15 @@ import           Text.Parsec.Pos                         (SourceName, SourcePos)
 assemble :: SourceName -> Text -> Either ErrorMessage ByteString
 assemble name = fmap (toStrict . serialise) . translate <=< parseProgram name
 
+assembleAndShrink :: SourceName -> Text -> Either ErrorMessage ByteString
+assembleAndShrink name = fmap (toStrict . serialise) . translateAndShrink <=< parseProgram name
 
 -- | Translatre the given Pluto code into a Plutus Script
 translate :: Show ann => Program ann -> Either ErrorMessage Script
 translate = fmap Script . (desugar . annDeBruijn)
+
+translateAndShrink :: Show ann => Program ann -> Either ErrorMessage Script
+translateAndShrink = fmap shrinkScript . translate
 
 
 parseProgram :: SourceName -> Text -> Either ErrorMessage (Program SourcePos)
