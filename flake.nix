@@ -1,14 +1,29 @@
 {
   nixConfig.bash-prompt = "[nix-develop-pluto:] ";
   description = "A very basic flake";
-  inputs.haskellNix.url = "github:input-output-hk/haskell.nix";
-  inputs.nixpkgs.follows = "haskellNix/nixpkgs-unstable";
-  inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.plutus.url = "github:input-output-hk/plutus";
-  inputs.cardano-node.url = "github:input-output-hk/cardano-node";
-  inputs.plutus-apps.url = "github:input-output-hk/plutus-apps";
-  outputs = { self, nixpkgs, plutus, flake-utils, haskellNix, cardano-node, plutus-apps }:
-    flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
+  inputs  = {
+    #CI integration
+    flake-compat-ci.url = "github:hercules-ci/flake-compat-ci";
+    flake-compat = {
+      url = "github:edolstra/flake-compat";
+      flake = false;
+    };
+    #HaskellNix is implemented using a set nixpkgs.follows; allowing for flake-build
+    haskellNix = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:input-output-hk/haskell.nix";
+    };
+    # Nixpkgs set to specific URL for haskellNix
+    nixpkgs.url = "github:NixOS/nixpkgs/baaf9459d6105c243239289e1e82e3cdd5ac4809";
+    nixpkgs.follows = "haskellNix/nixpkgs-unstable";
+
+    flake-utils.url = "github:numtide/flake-utils";
+    plutus.url = "github:input-output-hk/plutus";
+    cardano-node.url = "github:input-output-hk/cardano-node";
+    plutus-apps.url = "github:input-output-hk/plutus-apps";
+  };
+  outputs = { self, nixpkgs, plutus, flake-utils, haskellNix, cardano-node, plutus-apps, flake-compat, flake-compat-ci }:
+  flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
       let
         deferPluginErrors = true;
         overlays = [
@@ -61,6 +76,10 @@
         pkgs = import nixpkgs { inherit system overlays; inherit (haskellNix) config; };
         flake = pkgs.pluto.flake { };
       in flake // {
+        ciNix = flake-compat-ci.lib.recurseIntoFlakeWith {
+          flake = self;
+          systems = [ "x86_64-linux" ];
+        };
         defaultPackage = flake.packages."pluto:exe:pluto";
       });
 }
