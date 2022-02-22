@@ -23,7 +23,7 @@
     plutus-apps.url = "github:input-output-hk/plutus-apps";
   };
   outputs = { self, nixpkgs, plutus, flake-utils, haskellNix, cardano-node, plutus-apps, flake-compat, flake-compat-ci }:
-  flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
+  flake-utils.lib.eachDefaultSystem (system:
       let
         deferPluginErrors = true;
         overlays = [
